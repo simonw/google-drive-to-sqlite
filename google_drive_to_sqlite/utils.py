@@ -39,4 +39,4 @@ def files_in_folder_recursive(access_token, folder_id, fields):
     ):
         yield file
         if file["mimeType"] == "application/vnd.google-apps.folder":
-            yield from files_in_folder_recursive(access_token, folder_id, fields)
+            yield from files_in_folder_recursive(access_token, file["id"], fields)

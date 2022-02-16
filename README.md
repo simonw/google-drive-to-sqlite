@@ -101,9 +101,15 @@ Usage: google-drive-to-sqlite files [OPTIONS] [DATABASE]
 
       google-drive-to-sqlite files files.db
 
-  Use --json to output as JSON, --nl for newline-delimited JSON:
+  Use --json to output JSON, --nl for newline-delimited JSON:
 
       google-drive-to-sqlite files files.db --json
+
+  Use a folder ID to recursively fetch every file in that folder and its sub-
+  folders:
+
+      google-drive-to-sqlite files files.db --folder
+      1E6Zg2X2bjjtPzVfX8YqdXZDCoB3AVA7i
 
 Options:
   -a, --auth FILE       Path to auth.json token file

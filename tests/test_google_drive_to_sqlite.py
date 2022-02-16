@@ -2,6 +2,7 @@ from click.testing import CliRunner
 from google_drive_to_sqlite.cli import cli, DEFAULT_FIELDS
 import json
 import pytest
+import re
 import sqlite_utils
 
 TOKEN_REQUEST_CONTENT = (
@@ -146,12 +147,12 @@ def test_files_basic(httpx_mock, opts, extra_qs, use_db):
         token_request, page1_request, page2_request = httpx_mock.get_requests()
         assert token_request.content == TOKEN_REQUEST_CONTENT
         assert page1_request.url == (
-            "https://www.googleapis.com/drive/v3/files?corpora=user&fields="
+            "https://www.googleapis.com/drive/v3/files?fields="
             + "nextPageToken%2C+files%28{}%29".format("%2C".join(DEFAULT_FIELDS))
             + extra_qs
         )
         assert page2_request.url == (
-            "https://www.googleapis.com/drive/v3/files?corpora=user&fields="
+            "https://www.googleapis.com/drive/v3/files?fields="
             + "nextPageToken%2C+files%28{}%29".format("%2C".join(DEFAULT_FIELDS))
             + extra_qs
             + "&pageToken=next"
@@ -179,8 +180,56 @@ def test_files_basic_stop_after(httpx_mock):
         token_request, page1_request = httpx_mock.get_requests()
         assert token_request.content == TOKEN_REQUEST_CONTENT
         assert page1_request.url == (
-            "https://www.googleapis.com/drive/v3/files?corpora=user&fields="
+            "https://www.googleapis.com/drive/v3/files?fields="
             + "nextPageToken%2C+files%28{}%29".format("%2C".join(DEFAULT_FIELDS))
         )
         results = json.loads(result.output)
         assert results == [{"id": 3}]
+
+
+def test_files_folder(httpx_mock):
+    httpx_mock.add_response(
+        method="POST",
+        json={"access_token": "atoken"},
+    )
+    httpx_mock.add_response(
+        json={
+            "nextPageToken": None,
+            "files": [
+                {"id": "doc1", "mimeType": "doc"},
+                {"id": "folder2", "mimeType": "application/vnd.google-apps.folder"},
+            ],
+        }
+    )
+    httpx_mock.add_response(
+        url=re.compile(".*folder2.*"),
+        json={
+            "nextPageToken": None,
+            "files": [
+                {"id": "doc2", "mimeType": "doc"},
+            ],
+        },
+    )
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        open("auth.json", "w").write(json.dumps({"google-drive-to-sqlite": "rtoken"}))
+        args = ["files", "--folder", "folder1", "--json"]
+        result = runner.invoke(cli, args)
+        token_request, folder1_request, folder2_request = httpx_mock.get_requests()
+        assert token_request.content == TOKEN_REQUEST_CONTENT
+        assert folder1_request.url == (
+            "https://www.googleapis.com/drive/v3/files?fields="
+            + "nextPageToken%2C+files%28{}%29".format("%2C".join(DEFAULT_FIELDS))
+            + "&q=%22folder1%22+in+parents"
+        )
+        assert folder2_request.url == (
+            "https://www.googleapis.com/drive/v3/files?fields="
+            + "nextPageToken%2C+files%28{}%29".format("%2C".join(DEFAULT_FIELDS))
+            + "&q=%22folder2%22+in+parents"
+        )
+        results = json.loads(result.output)
+        assert results == [
+            {"id": "doc1", "mimeType": "doc"},
+            {"id": "folder2", "mimeType": "application/vnd.google-apps.folder"},
+            {"id": "doc2", "mimeType": "doc"},
+        ]

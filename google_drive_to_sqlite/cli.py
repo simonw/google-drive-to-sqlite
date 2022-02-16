@@ -216,9 +216,14 @@ def files(database, auth, folder, q, full_text, json_, nl, stop_after):
 
         google-drive-to-sqlite files files.db
 
-    Use --json to output as JSON, --nl for newline-delimited JSON:
+    Use --json to output JSON, --nl for newline-delimited JSON:
 
         google-drive-to-sqlite files files.db --json
+
+    Use a folder ID to recursively fetch every file in that folder and its
+    sub-folders:
+
+        google-drive-to-sqlite files files.db --folder 1E6Zg2X2bjjtPzVfX8YqdXZDCoB3AVA7i
     """
     if not database and not json_ and not nl:
         raise click.ClickException("Must either provide database or use --json or --nl")
@@ -230,7 +235,7 @@ def files(database, auth, folder, q, full_text, json_, nl, stop_after):
     if folder:
         all = files_in_folder_recursive(access_token, folder, fields=DEFAULT_FIELDS)
     else:
-        all = paginate_files(access_token, corpora="user", q=q, fields=DEFAULT_FIELDS)
+        all = paginate_files(access_token, q=q, fields=DEFAULT_FIELDS)
 
     if stop_after:
         prev_all = all
@@ -254,7 +259,10 @@ def files(database, auth, folder, q, full_text, json_, nl, stop_after):
             click.echo(line)
         return
     db = sqlite_utils.Database(database)
-    db["files"].insert_all(all, pk="id", replace=True)
+    # Commit every 100 records
+    for chunk in chunks(all, 100):
+        with db.conn:
+            db["files"].insert_all(chunk, pk="id", replace=True)
 
 
 def load_token(auth):
@@ -300,3 +308,9 @@ def stream_indented_json(iterator, indent=2):
     if first:
         # We didn't output anything, so yield the empty list
         yield "[]"
+
+
+def chunks(sequence, size):
+    iterator = iter(sequence)
+    for item in iterator:
+        yield itertools.chain([item], itertools.islice(iterator, size - 1))
