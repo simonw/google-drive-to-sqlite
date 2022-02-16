@@ -3,8 +3,10 @@ import click
 import httpx
 import itertools
 import json
+import sqlite_utils
 import textwrap
 import urllib.parse
+from .utils import files_in_folder_recursive, paginate_files
 
 # https://github.com/simonw/google-drive-to-sqlite/issues/2
 GOOGLE_CLIENT_ID = (
@@ -25,6 +27,39 @@ START_AUTH_URL = (
         }
     )
 )
+
+DEFAULT_FIELDS = [
+    "kind",
+    "id",
+    "name",
+    "mimeType",
+    "starred",
+    "trashed",
+    "explicitlyTrashed",
+    "parents",
+    "spaces",
+    "version",
+    "webViewLink",
+    "iconLink",
+    "hasThumbnail",
+    "thumbnailVersion",
+    "thumbnailLink",
+    "viewedByMe",
+    "createdTime",
+    "modifiedTime",
+    "modifiedByMe",
+    "owners",
+    "lastModifyingUser",
+    "shared",
+    "ownedByMe",
+    "viewersCanCopyContent",
+    "copyRequiresWriterPermission",
+    "writersCanShare",
+    "folderColorRgb",
+    "quotaBytesUsed",
+    "isAppAuthorized",
+    "linkShareMetadata",
+]
 
 
 @click.group()
@@ -149,6 +184,77 @@ def get(url, auth, paginate, nl, stop_after):
         else:
             for line in stream_indented_json(paginate_all()):
                 click.echo(line)
+
+
+@cli.command()
+@click.argument(
+    "database",
+    type=click.Path(file_okay=True, dir_okay=False, allow_dash=False),
+    required=False,
+)
+@click.option(
+    "-a",
+    "--auth",
+    type=click.Path(file_okay=True, dir_okay=False, allow_dash=True),
+    default="auth.json",
+    help="Path to auth.json token file",
+)
+@click.option("--folder", help="Files in this folder ID and its sub-folders")
+@click.option("-q", help="Files matching this query")
+@click.option("--full-text", help="Search for files with text match")
+@click.option(
+    "json_", "--json", is_flag=True, help="Output JSON rather than write to DB"
+)
+@click.option(
+    "--nl", is_flag=True, help="Output newline-delimited JSON rather than write to DB"
+)
+@click.option("--stop-after", type=int, help="Stop paginating after X results")
+def files(database, auth, folder, q, full_text, json_, nl, stop_after):
+    """
+    Retrieve metadata for files in Google Drive, and write to a SQLite database
+    or output as JSON.
+
+        google-drive-to-sqlite files files.db
+
+    Use --json to output as JSON, --nl for newline-delimited JSON:
+
+        google-drive-to-sqlite files files.db --json
+    """
+    if not database and not json_ and not nl:
+        raise click.ClickException("Must either provide database or use --json or --nl")
+    if q and full_text:
+        raise click.ClickException("Cannot use -q and --full-text at the same time")
+    if full_text:
+        q = "fullText contains '{}'".format(full_text.replace("'", ""))
+    access_token = load_token(auth)
+    if folder:
+        all = files_in_folder_recursive(access_token, folder, fields=DEFAULT_FIELDS)
+    else:
+        all = paginate_files(access_token, corpora="user", q=q, fields=DEFAULT_FIELDS)
+
+    if stop_after:
+        prev_all = all
+
+        def new_all():
+            i = 0
+            for file in prev_all:
+                yield file
+                i += 1
+                if i >= stop_after:
+                    break
+
+        all = new_all()
+
+    if nl:
+        for file in all:
+            click.echo(json.dumps(file))
+        return
+    if json_:
+        for line in stream_indented_json(all):
+            click.echo(line)
+        return
+    db = sqlite_utils.Database(database)
+    db["files"].insert_all(all, pk="id")
 
 
 def load_token(auth):

@@ -58,6 +58,66 @@ Options:
 ```
 <!-- [[[end]]] -->
 
+## google-drive-to-sqlite files
+
+To retrieve metadata about the files in your Google Drive, or a folder or search within it, use the `google-drive-to-sqlite files` command.
+
+This will default to writing to a SQLite database:
+
+    google-drive-to-sqlite files files.db
+
+Instead of writing to SQLite you can use `--json` to output as JSON, or `--nl` to output as newline-delimited JSON:
+
+    google-drive-to-sqlite files files.db --nl
+
+Use `--folder ID` to retrieve everything in a specified folder and its sub-folders:
+
+    google-drive-to-sqlite files files.db --folder 1E6Zg2X2bjjtPzVfX8YqdXZDCoB3AVA7i
+
+Use `--q QUERY` to use a [custom search query](https://developers.google.com/drive/api/v3/reference/query-ref):
+
+    google-drive-to-sqlite files files.db -q 'starred = true'
+
+Use `--full-text TEXT` to search for files where the full text matches a search term:
+
+    google-drive-to-sqlite files files.db --full-text 'datasette'
+
+Use `--stop-after X` to stop after retrieving X files.
+
+Full `--help`:
+
+<!-- [[[cog
+result = runner.invoke(cli.cli, ["files", "--help"])
+help = result.output.replace("Usage: cli", "Usage: google-drive-to-sqlite")
+cog.out(
+    "```\n{}\n```\n".format(help)
+)
+]]] -->
+```
+Usage: google-drive-to-sqlite files [OPTIONS] [DATABASE]
+
+  Retrieve metadata for files in Google Drive, and write to a SQLite database or
+  output as JSON.
+
+      google-drive-to-sqlite files files.db
+
+  Use --json to output as JSON, --nl for newline-delimited JSON:
+
+      google-drive-to-sqlite files files.db --json
+
+Options:
+  -a, --auth FILE       Path to auth.json token file
+  --folder TEXT         Files in this folder ID and its sub-folders
+  -q TEXT               Files matching this query
+  --full-text TEXT      Search for files with text match
+  --json                Output JSON rather than write to DB
+  --nl                  Output newline-delimited JSON rather than write to DB
+  --stop-after INTEGER  Stop paginating after X results
+  --help                Show this message and exit.
+
+```
+<!-- [[[end]]] -->
+
 ## google-drive-to-sqlite get URL
 
 The `get` command makes authenticated requests to the specified URL, using credentials derived from the `auth.json` file.
