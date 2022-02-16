@@ -24,6 +24,7 @@ def paginate_files(access_token, *, corpora=None, q=None, fields=None):
             files_url,
             params=params,
             headers={"Authorization": "Bearer {}".format(access_token)},
+            timeout=10.0,
         ).json()
         if "error" in data:
             raise FilesError(data)

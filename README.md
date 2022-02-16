@@ -66,6 +66,10 @@ This will default to writing to a SQLite database:
 
     google-drive-to-sqlite files files.db
 
+Files will be written to a `files` table, which will be created if it does not yet exist.
+
+If a file already exists in that table, based on a matching `id`, it will be replaced with fresh data.
+
 Instead of writing to SQLite you can use `--json` to output as JSON, or `--nl` to output as newline-delimited JSON:
 
     google-drive-to-sqlite files files.db --nl

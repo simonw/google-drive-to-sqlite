@@ -138,6 +138,7 @@ def get(url, auth, paginate, nl, stop_after):
         response = httpx.get(
             url,
             headers={"Authorization": "Bearer {}".format(access_token)},
+            timeout=10.0,
         )
         data = response.json()
         if response.status_code != 200:
@@ -157,6 +158,7 @@ def get(url, auth, paginate, nl, stop_after):
                     url,
                     params=params,
                     headers={"Authorization": "Bearer {}".format(access_token)},
+                    timeout=10.0,
                 )
                 data = response.json()
                 if response.status_code != 200:
