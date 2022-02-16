@@ -1,7 +1,15 @@
 from click.testing import CliRunner
-from google_drive_to_sqlite.cli import cli
+from google_drive_to_sqlite.cli import cli, DEFAULT_FIELDS
 import json
 import pytest
+import sqlite_utils
+
+TOKEN_REQUEST_CONTENT = (
+    b"grant_type=refresh_token&"
+    b"refresh_token=rtoken&"
+    b"client_id=148933860554-98i3hter1bsn24sa6fcq1tcrhcrujrnl.apps.googleusercontent.com&"
+    b"client_secret=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"
+)
 
 
 @pytest.mark.parametrize(
@@ -54,12 +62,7 @@ def test_get_single(httpx_mock):
             cli, ["get", "https://www.googleapis.com/drive/v3/about?fields=*"]
         )
         token_request, about_request = httpx_mock.get_requests()
-        assert token_request.content == (
-            b"grant_type=refresh_token&"
-            b"refresh_token=rtoken&"
-            b"client_id=148933860554-98i3hter1bsn24sa6fcq1tcrhcrujrnl.apps.googleusercontent.com&"
-            b"client_secret=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"
-        )
+        assert token_request.content == TOKEN_REQUEST_CONTENT
         assert about_request.url == "https://www.googleapis.com/drive/v3/about?fields=*"
         assert about_request.headers["authorization"] == "Bearer atoken"
         assert result.exit_code == 0
@@ -109,3 +112,75 @@ def test_get_paginated(httpx_mock, opts, expected_output):
         assert page2_request.url == "https://www.googleapis.com/page?pageToken=next"
         assert result.exit_code == 0
         assert result.output == expected_output
+
+
+@pytest.mark.parametrize(
+    "opts,extra_qs",
+    (
+        ([], ""),
+        (["-q", "starred = true"], "&q=starred+%3D+true"),
+        (["--full-text", "search"], "&q=fullText+contains+%27search%27"),
+    ),
+)
+@pytest.mark.parametrize("use_db", (True, False))
+def test_files_basic(httpx_mock, opts, extra_qs, use_db):
+    httpx_mock.add_response(
+        method="POST",
+        json={"access_token": "atoken"},
+    )
+    httpx_mock.add_response(
+        json={"nextPageToken": "next", "files": [{"id": 1}, {"id": 2}]},
+    )
+    httpx_mock.add_response(
+        json={"nextPageToken": None, "files": [{"id": 3}, {"id": 4}]},
+    )
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        open("auth.json", "w").write(json.dumps({"google-drive-to-sqlite": "rtoken"}))
+        args = ["files"]
+        if use_db:
+            args.append("test.db")
+        else:
+            args.append("--json")
+        result = runner.invoke(cli, args + opts)
+        token_request, page1_request, page2_request = httpx_mock.get_requests()
+        assert token_request.content == TOKEN_REQUEST_CONTENT
+        assert page1_request.url == (
+            "https://www.googleapis.com/drive/v3/files?corpora=user&fields="
+            + "nextPageToken%2C+files%28{}%29".format("%2C".join(DEFAULT_FIELDS))
+            + extra_qs
+        )
+        assert page2_request.url == (
+            "https://www.googleapis.com/drive/v3/files?corpora=user&fields="
+            + "nextPageToken%2C+files%28{}%29".format("%2C".join(DEFAULT_FIELDS))
+            + extra_qs
+            + "&pageToken=next"
+        )
+        if use_db:
+            results = list(sqlite_utils.Database("test.db")["files"].rows)
+        else:
+            results = json.loads(result.output)
+        assert results == [{"id": 1}, {"id": 2}, {"id": 3}, {"id": 4}]
+
+
+def test_files_basic_stop_after(httpx_mock):
+    httpx_mock.add_response(
+        method="POST",
+        json={"access_token": "atoken"},
+    )
+    httpx_mock.add_response(
+        json={"nextPageToken": None, "files": [{"id": 3}, {"id": 4}]},
+    )
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        open("auth.json", "w").write(json.dumps({"google-drive-to-sqlite": "rtoken"}))
+        args = ["files", "--json", "--stop-after", "1"]
+        result = runner.invoke(cli, args)
+        token_request, page1_request = httpx_mock.get_requests()
+        assert token_request.content == TOKEN_REQUEST_CONTENT
+        assert page1_request.url == (
+            "https://www.googleapis.com/drive/v3/files?corpora=user&fields="
+            + "nextPageToken%2C+files%28{}%29".format("%2C".join(DEFAULT_FIELDS))
+        )
+        results = json.loads(result.output)
+        assert results == [{"id": 3}]

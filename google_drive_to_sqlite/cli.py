@@ -254,7 +254,7 @@ def files(database, auth, folder, q, full_text, json_, nl, stop_after):
             click.echo(line)
         return
     db = sqlite_utils.Database(database)
-    db["files"].insert_all(all, pk="id")
+    db["files"].insert_all(all, pk="id", replace=True)
 
 
 def load_token(auth):
