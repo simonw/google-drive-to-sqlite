@@ -33,6 +33,31 @@ To specify a different location for that file, use the `--auth` option:
 
     google-drive-to-sqlite auth --auth ~/google-drive-auth.json
 
+Full `--help`:
+
+<!-- [[[cog
+import cog
+from google_drive_to_sqlite import cli
+from click.testing import CliRunner
+runner = CliRunner()
+result = runner.invoke(cli.cli, ["auth", "--help"])
+help = result.output.replace("Usage: cli", "Usage: google-drive-to-sqlite")
+cog.out(
+    "```\n{}\n```\n".format(help)
+)
+]]] -->
+```
+Usage: google-drive-to-sqlite auth [OPTIONS]
+
+  Authenticate user and save credentials
+
+Options:
+  -a, --auth FILE  Path to save token, defaults to auth.json
+  --help           Show this message and exit.
+
+```
+<!-- [[[end]]] -->
+
 ## google-drive-to-sqlite get URL
 
 The `get` command makes authenticated requests to the specified URL, using credentials derived from the `auth.json` file.
@@ -81,6 +106,30 @@ Add `--nl` to stream paginated data as newline-delimited JSON:
     {"kind": "drive#file", "id": "1E6Zg2X2bjjtPzVfX8YqdXZDCoB3AVA7i", "name": "Subfolder", "mimeType": "application/vnd.google-apps.folder"}
 
 Add `--stop-after 5` to stop after 5 records - useful for testing.
+
+Full `--help`:
+
+<!-- [[[cog
+result = runner.invoke(cli.cli, ["get", "--help"])
+help = result.output.replace("Usage: cli", "Usage: google-drive-to-sqlite")
+cog.out(
+    "```\n{}\n```\n".format(help)
+)
+]]] -->
+```
+Usage: google-drive-to-sqlite get [OPTIONS] URL
+
+  Make an authenticated HTTP GET to the specified URL
+
+Options:
+  -a, --auth FILE       Path to auth.json token file
+  --paginate TEXT       Paginate through all results in this key
+  --nl                  Output paginated data as newline-delimited JSON
+  --stop-after INTEGER  Stop paginating after X results
+  --help                Show this message and exit.
+
+```
+<!-- [[[end]]] -->
 
 ## Development
 
