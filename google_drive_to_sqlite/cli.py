@@ -14,19 +14,20 @@ GOOGLE_CLIENT_ID = (
 )
 # It's OK to publish this secret in application source code
 GOOGLE_CLIENT_SECRET = "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"
+DEFAULT_SCOPE = "https://www.googleapis.com/auth/drive.readonly"
 
-START_AUTH_URL = (
-    "https://accounts.google.com/o/oauth2/v2/auth?"
-    + urllib.parse.urlencode(
+
+def start_auth_url(google_client_id, scope):
+    return "https://accounts.google.com/o/oauth2/v2/auth?" + urllib.parse.urlencode(
         {
             "access_type": "offline",
-            "client_id": GOOGLE_CLIENT_ID,
+            "client_id": google_client_id,
             "redirect_uri": "urn:ietf:wg:oauth:2.0:oob",
             "response_type": "code",
-            "scope": "https://www.googleapis.com/auth/drive.readonly",
+            "scope": scope,
         }
     )
-)
+
 
 DEFAULT_FIELDS = [
     "kind",
@@ -76,11 +77,20 @@ def cli():
     default="auth.json",
     help="Path to save token, defaults to auth.json",
 )
-def auth(auth):
+@click.option("--google-client-id", help="Custom Google client ID")
+@click.option("--google-client-secret", help="Custom Google client secret")
+@click.option("--scope", help="Custom token scope")
+def auth(auth, google_client_id, google_client_secret, scope):
     "Authenticate user and save credentials"
+    if google_client_id is None:
+        google_client_id = GOOGLE_CLIENT_ID
+    if google_client_secret is None:
+        google_client_secret = GOOGLE_CLIENT_SECRET
+    if scope is None:
+        scope = DEFAULT_SCOPE
     click.echo("Visit the following URL to authenticate with Google Drive")
     click.echo("")
-    click.echo(START_AUTH_URL)
+    click.echo(start_auth_url(google_client_id, scope))
     click.echo("")
     click.echo("Then return here and paste in the resulting code:")
     copied_code = click.prompt("Paste code here", hide_input=True)
@@ -88,8 +98,8 @@ def auth(auth):
         "https://www.googleapis.com/oauth2/v4/token",
         data={
             "code": copied_code,
-            "client_id": GOOGLE_CLIENT_ID,
-            "client_secret": GOOGLE_CLIENT_SECRET,
+            "client_id": google_client_id,
+            "client_secret": google_client_secret,
             "redirect_uri": "urn:ietf:wg:oauth:2.0:oob",
             "grant_type": "authorization_code",
         },
@@ -105,7 +115,14 @@ def auth(auth):
         auth_data = json.load(open(auth))
     except (ValueError, FileNotFoundError):
         auth_data = {}
-    auth_data["google-drive-to-sqlite"] = tokens["refresh_token"]
+    info = {"refresh_token": tokens["refresh_token"]}
+    if google_client_id != GOOGLE_CLIENT_ID:
+        info["google_client_id"] = google_client_id
+    if google_client_secret != GOOGLE_CLIENT_SECRET:
+        info["google_client_secret"] = google_client_secret
+    if scope != DEFAULT_SCOPE:
+        info["scope"] = scope
+    auth_data["google-drive-to-sqlite"] = info
     open(auth, "w").write(json.dumps(auth_data, indent=4))
 
 
@@ -268,7 +285,7 @@ def files(database, auth, folder, q, full_text, json_, nl, stop_after):
 
 def load_token(auth):
     try:
-        refresh_token = json.load(open(auth))["google-drive-to-sqlite"]
+        token_info = json.load(open(auth))["google-drive-to-sqlite"]
     except (KeyError, FileNotFoundError):
         raise click.ClickException("Could not find google-drive-to-sqlite in auth.json")
     # Exchange refresh_token for access_token
@@ -276,9 +293,11 @@ def load_token(auth):
         "https://www.googleapis.com/oauth2/v4/token",
         data={
             "grant_type": "refresh_token",
-            "refresh_token": refresh_token,
-            "client_id": GOOGLE_CLIENT_ID,
-            "client_secret": GOOGLE_CLIENT_SECRET,
+            "refresh_token": token_info["refresh_token"],
+            "client_id": token_info.get("google_client_id", GOOGLE_CLIENT_ID),
+            "client_secret": token_info.get(
+                "google_client_secret", GOOGLE_CLIENT_SECRET
+            ),
         },
     ).json()
     if "error" in data:

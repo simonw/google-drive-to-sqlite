@@ -33,6 +33,8 @@ To specify a different location for that file, use the `--auth` option:
 
     google-drive-to-sqlite auth --auth ~/google-drive-auth.json
 
+The `auth` command also provides options for using a different scope, Google client ID and Google client secret. You can use these to create your own custom authentication tokens that can work with other Google APIs.
+
 Full `--help`:
 
 <!-- [[[cog
@@ -52,8 +54,11 @@ Usage: google-drive-to-sqlite auth [OPTIONS]
   Authenticate user and save credentials
 
 Options:
-  -a, --auth FILE  Path to save token, defaults to auth.json
-  --help           Show this message and exit.
+  -a, --auth FILE              Path to save token, defaults to auth.json
+  --google-client-id TEXT      Custom Google client ID
+  --google-client-secret TEXT  Custom Google client secret
+  --scope TEXT                 Custom token scope
+  --help                       Show this message and exit.
 
 ```
 <!-- [[[end]]] -->

@@ -12,6 +12,8 @@ TOKEN_REQUEST_CONTENT = (
     b"client_secret=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"
 )
 
+AUTH_JSON = {"google-drive-to-sqlite": {"refresh_token": "rtoken"}}
+
 
 @pytest.mark.parametrize(
     "response,expected_error",
@@ -38,7 +40,38 @@ def test_auth(httpx_mock, response, expected_error):
         else:
             assert result.exit_code == 0
             auth = json.load(open("auth.json"))
-            assert auth == {"google-drive-to-sqlite": "rtoken"}
+            assert auth == {"google-drive-to-sqlite": {"refresh_token": "rtoken"}}
+
+
+@pytest.mark.parametrize(
+    "opts,expected_content",
+    (
+        ([], {"refresh_token": "rtoken"}),
+        (
+            ["--google-client-id", "x", "--google-client-secret", "y"],
+            {
+                "refresh_token": "rtoken",
+                "google_client_id": "x",
+                "google_client_secret": "y",
+            },
+        ),
+        (
+            ["--scope", "SCOPE"],
+            {
+                "refresh_token": "rtoken",
+                "scope": "SCOPE",
+            },
+        ),
+    ),
+)
+def test_auth_custom_client(httpx_mock, opts, expected_content):
+    httpx_mock.add_response(json={"refresh_token": "rtoken"})
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        result = runner.invoke(cli, ["auth"] + opts, input="my-token")
+        assert result.exit_code == 0
+        auth = json.load(open("auth.json"))
+        assert auth == {"google-drive-to-sqlite": expected_content}
 
 
 def test_get_single(httpx_mock):
@@ -58,7 +91,7 @@ def test_get_single(httpx_mock):
     )
     runner = CliRunner()
     with runner.isolated_filesystem():
-        open("auth.json", "w").write(json.dumps({"google-drive-to-sqlite": "rtoken"}))
+        open("auth.json", "w").write(json.dumps(AUTH_JSON))
         result = runner.invoke(
             cli, ["get", "https://www.googleapis.com/drive/v3/about?fields=*"]
         )
@@ -102,7 +135,7 @@ def test_get_paginated(httpx_mock, opts, expected_output):
     )
     runner = CliRunner()
     with runner.isolated_filesystem():
-        open("auth.json", "w").write(json.dumps({"google-drive-to-sqlite": "rtoken"}))
+        open("auth.json", "w").write(json.dumps(AUTH_JSON))
         result = runner.invoke(
             cli,
             ["get", "https://www.googleapis.com/page", "--paginate", "files"] + opts,
@@ -137,7 +170,7 @@ def test_files_basic(httpx_mock, opts, extra_qs, use_db):
     )
     runner = CliRunner()
     with runner.isolated_filesystem():
-        open("auth.json", "w").write(json.dumps({"google-drive-to-sqlite": "rtoken"}))
+        open("auth.json", "w").write(json.dumps(AUTH_JSON))
         args = ["files"]
         if use_db:
             args.append("test.db")
@@ -174,7 +207,7 @@ def test_files_basic_stop_after(httpx_mock):
     )
     runner = CliRunner()
     with runner.isolated_filesystem():
-        open("auth.json", "w").write(json.dumps({"google-drive-to-sqlite": "rtoken"}))
+        open("auth.json", "w").write(json.dumps(AUTH_JSON))
         args = ["files", "--json", "--stop-after", "1"]
         result = runner.invoke(cli, args)
         token_request, page1_request = httpx_mock.get_requests()
@@ -212,7 +245,7 @@ def test_files_folder(httpx_mock):
     )
     runner = CliRunner()
     with runner.isolated_filesystem():
-        open("auth.json", "w").write(json.dumps({"google-drive-to-sqlite": "rtoken"}))
+        open("auth.json", "w").write(json.dumps(AUTH_JSON))
         args = ["files", "--folder", "folder1", "--json"]
         result = runner.invoke(cli, args)
         token_request, folder1_request, folder2_request = httpx_mock.get_requests()
