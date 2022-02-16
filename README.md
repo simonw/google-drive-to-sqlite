@@ -5,7 +5,7 @@
 [![Tests](https://github.com/simonw/google-drive-to-sqlite/workflows/Test/badge.svg)](https://github.com/simonw/google-drive-to-sqlite/actions?query=workflow%3ATest)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/simonw/google-drive-to-sqlite/blob/master/LICENSE)
 
-Create a SQLite database containing metadata from Google Drive
+Create a SQLite database containing metadata from [Google Drive](https://www.google.com/drive)
 
 ## Installation
 
@@ -33,7 +33,7 @@ To specify a different location for that file, use the `--auth` option:
 
     google-drive-to-sqlite auth --auth ~/google-drive-auth.json
 
-The `auth` command also provides options for using a different scope, Google client ID and Google client secret. You can use these to create your own custom authentication tokens that can work with other Google APIs.
+The `auth` command also provides options for using a different scope, Google client ID and Google client secret. You can use these to create your own custom authentication tokens that can work with other Google APIs, see [issue #5](https://github.com/simonw/google-drive-to-sqlite/issues/5) for details.
 
 Full `--help`:
 
@@ -67,7 +67,7 @@ Options:
 
 To retrieve metadata about the files in your Google Drive, or a folder or search within it, use the `google-drive-to-sqlite files` command.
 
-This will default to writing to a SQLite database:
+This will default to writing details about every file in your Google Drive to a SQLite database:
 
     google-drive-to-sqlite files files.db
 
@@ -77,7 +77,7 @@ If a file already exists in that table, based on a matching `id`, it will be rep
 
 Instead of writing to SQLite you can use `--json` to output as JSON, or `--nl` to output as newline-delimited JSON:
 
-    google-drive-to-sqlite files files.db --nl
+    google-drive-to-sqlite files --nl
 
 Use `--folder ID` to retrieve everything in a specified folder and its sub-folders:
 
