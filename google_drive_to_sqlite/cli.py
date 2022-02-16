@@ -158,7 +158,7 @@ def get(url, auth, paginate, nl, stop_after):
             timeout=10.0,
         )
         if response.status_code != 200:
-            raise click.ClickException('{}: {}'.format(response.url, response.status_code))
+            raise click.ClickException('{}: {}\n\n{}'.format(response.url, response.status_code, response.text))
         click.echo(json.dumps(response.json(), indent=4))
 
     else:
