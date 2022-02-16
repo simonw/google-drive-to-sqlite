@@ -140,10 +140,9 @@ def get(url, auth, paginate, nl, stop_after):
             headers={"Authorization": "Bearer {}".format(access_token)},
             timeout=10.0,
         )
-        data = response.json()
         if response.status_code != 200:
-            raise click.ClickException(json.dumps(data, indent=4))
-        click.echo(json.dumps(data, indent=4))
+            raise click.ClickException('{}: {}'.format(response.url, response.status_code))
+        click.echo(json.dumps(response.json(), indent=4))
 
     else:
 
