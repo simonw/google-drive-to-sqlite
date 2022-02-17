@@ -334,10 +334,10 @@ def load_token(auth):
 )
 def download(file_ids, auth, output, silent):
     "Download one or more file IDs to disk"
-    access_token = load_token(auth)
     if output:
         if len(file_ids) != 1:
             raise click.ClickException("--output option only works with a single file")
+    access_token = load_token(auth)
     for file_id in file_ids:
         with httpx.stream(
             "GET",
