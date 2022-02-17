@@ -8,7 +8,7 @@ import sqlite_utils
 import sys
 import textwrap
 import urllib.parse
-from .utils import files_in_folder_recursive, paginate_files
+from .utils import APIClient, files_in_folder_recursive, paginate_files
 
 # https://github.com/simonw/google-drive-to-sqlite/issues/2
 GOOGLE_CLIENT_ID = (
@@ -137,11 +137,11 @@ def auth(auth, google_client_id, google_client_secret, scope):
 )
 def revoke(auth):
     "Revoke the token stored in auth.json"
-    refresh_token = load_token(auth, token="refresh_token")
+    tokens = load_tokens(auth)
     response = httpx.get(
         "https://accounts.google.com/o/oauth2/revoke",
         params={
-            "token": refresh_token,
+            "token": tokens["refresh_token"],
         },
     )
     if "error" in response.json():
@@ -171,14 +171,11 @@ def get(url, auth, paginate, nl, stop_after):
             raise click.ClickException(
                 "url must start with / or https://www.googleapis.com/"
             )
-    access_token = load_token(auth)
+    tokens = load_tokens(auth)
+    client = APIClient(**tokens)
 
     if not paginate:
-        response = httpx.get(
-            url,
-            headers={"Authorization": "Bearer {}".format(access_token)},
-            timeout=30.0,
-        )
+        response = client.get(url)
         if response.status_code != 200:
             raise click.ClickException(
                 "{}: {}\n\n{}".format(response.url, response.status_code, response.text)
@@ -197,11 +194,9 @@ def get(url, auth, paginate, nl, stop_after):
                 params = {}
                 if next_page_token is not None:
                     params["pageToken"] = next_page_token
-                response = httpx.get(
+                response = client.get(
                     url,
                     params=params,
-                    headers={"Authorization": "Bearer {}".format(access_token)},
-                    timeout=30.0,
                 )
                 data = response.json()
                 if response.status_code != 200:
@@ -276,11 +271,12 @@ def files(database, auth, folder, q, full_text, json_, nl, stop_after):
         raise click.ClickException("Cannot use -q and --full-text at the same time")
     if full_text:
         q = "fullText contains '{}'".format(full_text.replace("'", ""))
-    access_token = load_token(auth)
+    tokens = load_tokens(auth)
+    client = APIClient(**tokens)
     if folder:
-        all = files_in_folder_recursive(access_token, folder, fields=DEFAULT_FIELDS)
+        all = files_in_folder_recursive(client, folder, fields=DEFAULT_FIELDS)
     else:
-        all = paginate_files(access_token, q=q, fields=DEFAULT_FIELDS)
+        all = paginate_files(client, q=q, fields=DEFAULT_FIELDS)
 
     if stop_after:
         prev_all = all
@@ -310,29 +306,16 @@ def files(database, auth, folder, q, full_text, json_, nl, stop_after):
             db["files"].insert_all(chunk, pk="id", replace=True)
 
 
-def load_token(auth, token="access_token"):
+def load_tokens(auth):
     try:
         token_info = json.load(open(auth))["google-drive-to-sqlite"]
     except (KeyError, FileNotFoundError):
         raise click.ClickException("Could not find google-drive-to-sqlite in auth.json")
-    assert token in ("access_token", "refresh_token")
-    if token == "refresh_token":
-        return token_info["refresh_token"]
-    # Exchange refresh_token for access_token
-    data = httpx.post(
-        "https://www.googleapis.com/oauth2/v4/token",
-        data={
-            "grant_type": "refresh_token",
-            "refresh_token": token_info["refresh_token"],
-            "client_id": token_info.get("google_client_id", GOOGLE_CLIENT_ID),
-            "client_secret": token_info.get(
-                "google_client_secret", GOOGLE_CLIENT_SECRET
-            ),
-        },
-    ).json()
-    if "error" in data:
-        raise click.ClickException(str(data))
-    return data["access_token"]
+    return {
+        "refresh_token": token_info["refresh_token"],
+        "client_id": token_info.get("google_client_id", GOOGLE_CLIENT_ID),
+        "client_secret": token_info.get("google_client_secret", GOOGLE_CLIENT_SECRET),
+    }
 
 
 @cli.command()
@@ -361,12 +344,12 @@ def download(file_ids, auth, output, silent):
     if output:
         if len(file_ids) != 1:
             raise click.ClickException("--output option only works with a single file")
-    access_token = load_token(auth)
+    tokens = load_tokens(auth)
+    client = APIClient(**tokens)
     for file_id in file_ids:
-        with httpx.stream(
+        with client.stream(
             "GET",
             "https://www.googleapis.com/drive/v3/files/{}?alt=media".format(file_id),
-            headers={"Authorization": "Bearer {}".format(access_token)},
         ) as r:
             fp = None
             if output:

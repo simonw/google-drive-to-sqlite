@@ -389,3 +389,61 @@ def test_download_output_path(httpx_mock):
         result = runner.invoke(cli, ["download", "file1", "-o", "out.txt"])
         assert result.exit_code == 0
         assert open("out.txt").read() == "this is text"
+
+
+def test_refresh_access_token_once_if_it_expires(httpx_mock):
+    httpx_mock.add_response(
+        method="POST",
+        json={"access_token": "atoken"},
+    )
+    httpx_mock.add_response(
+        url="https://www.googleapis.com/drive/v3/about?fields=*",
+        json={
+            "error": {
+                "errors": [
+                    {
+                        "domain": "global",
+                        "reason": "authError",
+                        "message": "Invalid Credentials",
+                        "locationType": "header",
+                        "location": "Authorization",
+                    }
+                ],
+                "code": 401,
+                "message": "Invalid Credentials",
+            }
+        },
+        status_code=401,
+    )
+    httpx_mock.add_response(
+        method="POST",
+        json={"access_token": "atoken2"},
+    )
+    about_data = {
+        "kind": "drive#about",
+        "user": {"kind": "drive#user", "displayName": "User"},
+    }
+    httpx_mock.add_response(
+        url="https://www.googleapis.com/drive/v3/about?fields=*",
+        method="GET",
+        json=about_data,
+    )
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        open("auth.json", "w").write(json.dumps(AUTH_JSON))
+        result = runner.invoke(
+            cli, ["get", "https://www.googleapis.com/drive/v3/about?fields=*"]
+        )
+        assert result.exit_code == 0
+
+    assert json.loads(result.output) == about_data
+
+    token1, about_denied, token2, about_success = httpx_mock.get_requests()
+    for request in (token1, token2):
+        assert request.method == "POST"
+        assert request.url == "https://www.googleapis.com/oauth2/v4/token"
+    for request2 in (about_denied, about_success):
+        assert request2.method == "GET"
+        assert request2.url == "https://www.googleapis.com/drive/v3/about?fields=*"
+    assert about_denied.headers["Authorization"] == "Bearer atoken"
+    assert about_success.headers["Authorization"] == "Bearer atoken2"
