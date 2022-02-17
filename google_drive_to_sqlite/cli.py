@@ -44,7 +44,6 @@ DEFAULT_FIELDS = [
     "iconLink",
     "hasThumbnail",
     "thumbnailVersion",
-    "thumbnailLink",
     "viewedByMe",
     "createdTime",
     "modifiedTime",
