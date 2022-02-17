@@ -160,7 +160,10 @@ def get(url, auth, paginate, nl, stop_after):
             raise click.ClickException(
                 "{}: {}\n\n{}".format(response.url, response.status_code, response.text)
             )
-        click.echo(json.dumps(response.json(), indent=4))
+        if "json" in response.headers.get("content-type", ""):
+            click.echo(json.dumps(response.json(), indent=4))
+        else:
+            click.echo(response.text)
 
     else:
 

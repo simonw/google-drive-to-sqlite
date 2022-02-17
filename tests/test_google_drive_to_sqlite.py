@@ -100,7 +100,31 @@ def test_get_single(httpx_mock):
         assert about_request.url == "https://www.googleapis.com/drive/v3/about?fields=*"
         assert about_request.headers["authorization"] == "Bearer atoken"
         assert result.exit_code == 0
-        assert json.loads(result.output) == about_data
+        assert result.output.strip() == json.dumps(about_data, indent=4)
+
+
+def test_get_plain_text(httpx_mock):
+    url = "https://www.googleapis.com/drive/v3/files/123/export?mimeType=text/plain"
+    httpx_mock.add_response(
+        url="https://www.googleapis.com/oauth2/v4/token",
+        method="POST",
+        json={"access_token": "atoken"},
+    )
+    httpx_mock.add_response(
+        url=url,
+        method="GET",
+        content="This is plain text",
+    )
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        open("auth.json", "w").write(json.dumps(AUTH_JSON))
+        result = runner.invoke(cli, ["get", url])
+        token_request, export_request = httpx_mock.get_requests()
+        assert token_request.content == TOKEN_REQUEST_CONTENT
+        assert export_request.url == url
+        assert export_request.headers["authorization"] == "Bearer atoken"
+        assert result.exit_code == 0
+        assert result.output.strip() == "This is plain text"
 
 
 @pytest.mark.parametrize(
