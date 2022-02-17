@@ -44,6 +44,34 @@ def test_auth(httpx_mock, response, expected_error):
 
 
 @pytest.mark.parametrize(
+    "auth_file_exists,revoke_response,expected_error",
+    (
+        (False, None, "Error: Could not find google-drive-to-sqlite in auth.json"),
+        (True, {}, None),
+        (True, {"error": "invalid_token"}, "Error: invalid_token"),
+    ),
+)
+def test_revoke(httpx_mock, auth_file_exists, revoke_response, expected_error):
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        if auth_file_exists:
+            open("auth.json", "w").write(json.dumps(AUTH_JSON))
+            httpx_mock.add_response(json=revoke_response)
+        result = runner.invoke(cli, ["revoke"])
+        if auth_file_exists:
+            request = httpx_mock.get_request()
+            assert (
+                request.url
+                == "https://accounts.google.com/o/oauth2/revoke?token=rtoken"
+            )
+        if expected_error:
+            assert result.exit_code == 1
+            assert result.output.strip().endswith(expected_error)
+        else:
+            assert result.exit_code == 0
+
+
+@pytest.mark.parametrize(
     "opts,expected_content",
     (
         ([], {"refresh_token": "rtoken"}),

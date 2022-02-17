@@ -128,6 +128,27 @@ def auth(auth, google_client_id, google_client_secret, scope):
 
 
 @cli.command()
+@click.option(
+    "-a",
+    "--auth",
+    type=click.Path(file_okay=True, dir_okay=False, allow_dash=False),
+    default="auth.json",
+    help="Path to load token, defaults to auth.json",
+)
+def revoke(auth):
+    "Revoke the token stored in auth.json"
+    refresh_token = load_token(auth, token="refresh_token")
+    response = httpx.get(
+        "https://accounts.google.com/o/oauth2/revoke",
+        params={
+            "token": refresh_token,
+        },
+    )
+    if "error" in response.json():
+        raise click.ClickException(response.json()["error"])
+
+
+@cli.command()
 @click.argument("url")
 @click.option(
     "-a",
@@ -289,11 +310,14 @@ def files(database, auth, folder, q, full_text, json_, nl, stop_after):
             db["files"].insert_all(chunk, pk="id", replace=True)
 
 
-def load_token(auth):
+def load_token(auth, token="access_token"):
     try:
         token_info = json.load(open(auth))["google-drive-to-sqlite"]
     except (KeyError, FileNotFoundError):
         raise click.ClickException("Could not find google-drive-to-sqlite in auth.json")
+    assert token in ("access_token", "refresh_token")
+    if token == "refresh_token":
+        return token_info["refresh_token"]
     # Exchange refresh_token for access_token
     data = httpx.post(
         "https://www.googleapis.com/oauth2/v4/token",
