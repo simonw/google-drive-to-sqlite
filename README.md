@@ -15,6 +15,8 @@ Install this tool using `pip`:
 
 ## Authentication
 
+> :warning: **This application has not yet been verified by Google** - you may find you are unable to authenticate until that verification is complete. [#10](https://github.com/simonw/google-drive-to-sqlite/issues/10)
+
 First, authenticate with Google Drive using the `auth` command:
 
     % google-drive-to-sqlite auth
