@@ -3,7 +3,9 @@ import click
 import httpx
 import itertools
 import json
+import pathlib
 import sqlite_utils
+import sys
 import textwrap
 import urllib.parse
 from .utils import files_in_folder_recursive, paginate_files
@@ -307,6 +309,73 @@ def load_token(auth):
     if "error" in data:
         raise click.ClickException(str(data))
     return data["access_token"]
+
+
+@cli.command()
+@click.argument("file_ids", nargs=-1, required=True)
+@click.option(
+    "-a",
+    "--auth",
+    type=click.Path(file_okay=True, dir_okay=False, allow_dash=True),
+    default="auth.json",
+    help="Path to auth.json token file",
+)
+@click.option(
+    "-o",
+    "--output",
+    type=click.Path(file_okay=True, dir_okay=False, allow_dash=True, writable=True),
+    help="File to write to, or - for standard output",
+)
+@click.option(
+    "-s",
+    "--silent",
+    is_flag=True,
+    help="Hide progress bar and filename",
+)
+def download(file_ids, auth, output, silent):
+    "Download one or more file IDs to disk"
+    access_token = load_token(auth)
+    if output:
+        if len(file_ids) != 1:
+            raise click.ClickException("--output option only works with a single file")
+    for file_id in file_ids:
+        with httpx.stream(
+            "GET",
+            "https://www.googleapis.com/drive/v3/files/{}?alt=media".format(file_id),
+            headers={"Authorization": "Bearer {}".format(access_token)},
+        ) as r:
+            fp = None
+            if output:
+                filename = pathlib.Path(output).name
+                if output == "-":
+                    fp = sys.stdout.buffer
+                    silent = True
+                else:
+                    fp = open(output, "wb")
+            else:
+                # Use file ID + extension
+                filename = "{}.{}".format(
+                    file_id, r.headers.get("content-type", "/bin").split("/")[-1]
+                )
+                fp = open(filename, "wb")
+            length = int(r.headers.get("content-length", "0"))
+            if not silent:
+                click.echo(
+                    "Writing {}to {}".format(
+                        "{:,} bytes ".format(length) if length else "", filename
+                    ),
+                    err=True,
+                )
+            if length and not silent:
+                with click.progressbar(
+                    length=int(r.headers["content-length"]), label="Downloading"
+                ) as bar:
+                    for data in r.iter_bytes():
+                        fp.write(data)
+                        bar.update(len(data))
+            else:
+                for data in r.iter_bytes():
+                    fp.write(data)
 
 
 def stream_indented_json(iterator, indent=2):

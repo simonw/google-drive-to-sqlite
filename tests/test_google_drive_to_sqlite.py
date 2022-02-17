@@ -290,3 +290,74 @@ def test_files_folder(httpx_mock):
             {"id": "folder2", "mimeType": "application/vnd.google-apps.folder"},
             {"id": "doc2", "mimeType": "doc"},
         ]
+
+
+def test_download_two_files(httpx_mock):
+    httpx_mock.add_response(
+        method="POST",
+        json={"access_token": "atoken"},
+    )
+    httpx_mock.add_response(
+        content="this is text",
+        headers={"content-type": "text/plain"},
+    )
+    httpx_mock.add_response(
+        content="this is gif",
+        headers={"content-type": "image/gif"},
+    )
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        open("auth.json", "w").write(json.dumps(AUTH_JSON))
+        result = runner.invoke(cli, ["download", "file1", "file2"])
+        assert result.exit_code == 0
+        # Should be file1.plain and file2.gif
+        assert open("file1.plain").read() == "this is text"
+        assert open("file2.gif").read() == "this is gif"
+    _, file1_request, file2_request = httpx_mock.get_requests()
+    assert (
+        file1_request.url == "https://www.googleapis.com/drive/v3/files/file1?alt=media"
+    )
+    assert (
+        file2_request.url == "https://www.googleapis.com/drive/v3/files/file2?alt=media"
+    )
+
+
+def test_download_output_two_files_error():
+    runner = CliRunner()
+    result = runner.invoke(cli, ["download", "file1", "file2", "-o", "out.txt"])
+    assert result.exit_code == 1
+    assert result.output == "Error: --output option only works with a single file\n"
+
+
+def test_download_output_stdout(httpx_mock):
+    httpx_mock.add_response(
+        method="POST",
+        json={"access_token": "atoken"},
+    )
+    httpx_mock.add_response(
+        content="this is text",
+        headers={"content-type": "text/plain"},
+    )
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        open("auth.json", "w").write(json.dumps(AUTH_JSON))
+        result = runner.invoke(cli, ["download", "file1", "-o", "-"])
+        assert result.exit_code == 0
+        assert result.output == "this is text"
+
+
+def test_download_output_path(httpx_mock):
+    httpx_mock.add_response(
+        method="POST",
+        json={"access_token": "atoken"},
+    )
+    httpx_mock.add_response(
+        content="this is text",
+        headers={"content-type": "text/plain"},
+    )
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        open("auth.json", "w").write(json.dumps(AUTH_JSON))
+        result = runner.invoke(cli, ["download", "file1", "-o", "out.txt"])
+        assert result.exit_code == 0
+        assert open("out.txt").read() == "this is text"

@@ -133,6 +133,57 @@ Options:
 ```
 <!-- [[[end]]] -->
 
+## google-drive-to-sqlite download FILE_ID
+
+The `download` command can be used to download files from Google Drive.
+
+You'll need one or more file IDs, which look something like `0B32uDVNZfiEKLUtIT1gzYWN2NDI4SzVQYTFWWWxCWUtvVGNB`.
+
+To download the file, run this:
+
+    google-drive-to-sqlite download 0B32uDVNZfiEKLUtIT1gzYWN2NDI4SzVQYTFWWWxCWUtvVGNB
+
+This will detect the content type of the file and use that as the extension - so if this file is a JPEG the file would be downloaded as:
+
+    0B32uDVNZfiEKLUtIT1gzYWN2NDI4SzVQYTFWWWxCWUtvVGNB.jpeg
+
+You can pass multiple file IDs to the command at once.
+
+To hide the progress bar and filename output, use `-s` or `--silent`.
+
+If you are downloading a single file you can use the `-o` output to specify a filename and location:
+
+    google-drive-to-sqlite download 0B32uDVNZfiEKLUtIT1gzYWN2NDI4SzVQYTFWWWxCWUtvVGNB \
+      -o my-image.jpeg
+
+Use `-o -` to write the file contents to standard output:
+
+    google-drive-to-sqlite download 0B32uDVNZfiEKLUtIT1gzYWN2NDI4SzVQYTFWWWxCWUtvVGNB \
+      -o - > my-image.jpeg
+
+Full `--help`:
+
+<!-- [[[cog
+result = runner.invoke(cli.cli, ["download", "--help"])
+help = result.output.replace("Usage: cli", "Usage: google-drive-to-sqlite")
+cog.out(
+    "```\n{}\n```\n".format(help)
+)
+]]] -->
+```
+Usage: google-drive-to-sqlite download [OPTIONS] FILE_IDS...
+
+  Download one or more file IDs to disk
+
+Options:
+  -a, --auth FILE    Path to auth.json token file
+  -o, --output FILE  File to write to, or - for standard output
+  -s, --silent       Hide progress bar and filename
+  --help             Show this message and exit.
+
+```
+<!-- [[[end]]] -->
+
 ## google-drive-to-sqlite get URL
 
 The `get` command makes authenticated requests to the specified URL, using credentials derived from the `auth.json` file.
