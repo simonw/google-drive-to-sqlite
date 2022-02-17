@@ -7,6 +7,12 @@
 
 Create a SQLite database containing metadata from [Google Drive](https://www.google.com/drive)
 
+If you use Google Drive, and especially if you have shared drives with other people there's a good chance you have hundreds or even thousands of files that you may not be fully aware of.
+
+This tool can download metadata about those files - their names, sizes, folders, content types, permissions, creation dates and more - and store them in a SQLite database.
+
+This lets you use SQL to analyze your Google Drive contents, using [Datasette](https://datasette.io/) or the SQLite command-line tool or any other SQLite database browsing software.
+
 ## Installation
 
 Install this tool using `pip`:
