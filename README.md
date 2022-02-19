@@ -71,13 +71,15 @@ Options:
 ```
 <!-- [[[end]]] -->
 
-To revoke the token that is stored in `auth.json`, run the `revoke` command:
+To revoke the token that is stored in `auth.json`, such that it cannot be used to access Google Drive in the future, run the `revoke` command:
 
     google-drive-to-sqlite revoke
 
 Or if your token is stored in another location:
 
     google-drive-to-sqlite revoke -a ~/google-drive-auth.json
+
+You will need to obtain a fresh token using the `auth` command in order to continue using this tool.
 
 ## google-drive-to-sqlite files
 
