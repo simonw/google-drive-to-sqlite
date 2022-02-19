@@ -247,10 +247,10 @@ def test_files_basic(httpx_mock, opts, extra_qs, use_db):
         if use_db:
             rows = list(sqlite_utils.Database("test.db")["drive_files"].rows)
             assert rows == [
-                {"id": "1", "_parent": None},
-                {"id": "2", "_parent": None},
-                {"id": "3", "_parent": None},
-                {"id": "4", "_parent": None},
+                {"id": "1", "_parent": None, "lastModifyingUser": None},
+                {"id": "2", "_parent": None, "lastModifyingUser": None},
+                {"id": "3", "_parent": None, "lastModifyingUser": None},
+                {"id": "4", "_parent": None, "lastModifyingUser": None},
             ]
         else:
             results = json.loads(result.output)
@@ -484,10 +484,11 @@ def test_files_input(httpx_mock, opt, input):
         assert len(httpx_mock.get_requests()) == 0
         assert result.exit_code == 0
         db = sqlite_utils.Database("test.db")
-        assert db.table_names() == ["drive_folders", "drive_files"]
-        assert list(db["drive_files"].rows) == [
-            {"id": "one", "_parent": None},
-            {"id": "two", "_parent": None},
+        assert set(db.table_names()) == {"drive_folders", "drive_files", "drive_users"}
+        rows = list(db["drive_files"].rows)
+        assert rows == [
+            {"id": "one", "_parent": None, "lastModifyingUser": None},
+            {"id": "two", "_parent": None, "lastModifyingUser": None},
         ]
 
 
@@ -500,30 +501,180 @@ def test_files_input_real_example(httpx_mock):
         assert len(httpx_mock.get_requests()) == 0
         assert result.exit_code == 0
         db = sqlite_utils.Database("test.db")
-        assert db.table_names() == ["drive_folders", "drive_files"]
+        assert set(db.table_names()) == {"drive_folders", "drive_files", "drive_users"}
+        schema = db.schema
         assert (
-            db.schema
-            == "CREATE TABLE [drive_folders] (\n   [id] TEXT PRIMARY KEY,\n   [_parent]"
+            schema
+            == "CREATE TABLE [drive_users] (\n   [permissionId] TEXT PRIMARY KEY\n,"
+            " [kind] TEXT, [displayName] TEXT, [photoLink] TEXT, [me] INTEGER,"
+            " [emailAddress] TEXT);\nCREATE TABLE [drive_folders] (\n   [id] TEXT"
+            " PRIMARY KEY,\n   [_parent] TEXT,\n   [lastModifyingUser] TEXT, [kind]"
+            " TEXT, [name] TEXT, [mimeType] TEXT, [starred] INTEGER, [trashed]"
+            " INTEGER, [explicitlyTrashed] INTEGER, [parents] TEXT, [spaces] TEXT,"
+            " [version] TEXT, [webViewLink] TEXT, [iconLink] TEXT, [hasThumbnail]"
+            " INTEGER, [thumbnailVersion] TEXT, [viewedByMe] INTEGER, [createdTime]"
+            " TEXT, [modifiedTime] TEXT, [modifiedByMe] INTEGER, [owners] TEXT,"
+            " [shared] INTEGER, [ownedByMe] INTEGER, [viewersCanCopyContent]"
+            " INTEGER, [copyRequiresWriterPermission] INTEGER, [writersCanShare]"
+            " INTEGER, [folderColorRgb] TEXT, [quotaBytesUsed] TEXT,"
+            " [isAppAuthorized] INTEGER, [linkShareMetadata] TEXT,\n   FOREIGN"
+            " KEY([_parent]) REFERENCES [drive_folders]([id]),\n   FOREIGN"
+            " KEY([lastModifyingUser]) REFERENCES"
+            " [drive_users]([permissionId])\n);\nCREATE TABLE [drive_files] (\n  "
+            " [id] TEXT PRIMARY KEY,\n   [_parent] TEXT,\n   [lastModifyingUser]"
             " TEXT, [kind] TEXT, [name] TEXT, [mimeType] TEXT, [starred] INTEGER,"
             " [trashed] INTEGER, [explicitlyTrashed] INTEGER, [parents] TEXT,"
             " [spaces] TEXT, [version] TEXT, [webViewLink] TEXT, [iconLink] TEXT,"
             " [hasThumbnail] INTEGER, [thumbnailVersion] TEXT, [viewedByMe] INTEGER,"
             " [createdTime] TEXT, [modifiedTime] TEXT, [modifiedByMe] INTEGER,"
-            " [owners] TEXT, [lastModifyingUser] TEXT, [shared] INTEGER, [ownedByMe]"
-            " INTEGER, [viewersCanCopyContent] INTEGER,"
-            " [copyRequiresWriterPermission] INTEGER, [writersCanShare] INTEGER,"
-            " [folderColorRgb] TEXT, [quotaBytesUsed] TEXT, [isAppAuthorized]"
-            " INTEGER, [linkShareMetadata] TEXT,\n   FOREIGN KEY([_parent])"
-            " REFERENCES [drive_folders]([id])\n);\nCREATE TABLE [drive_files] (\n  "
-            " [id] TEXT PRIMARY KEY,\n   [_parent] TEXT, [kind] TEXT, [name] TEXT,"
-            " [mimeType] TEXT, [starred] INTEGER, [trashed] INTEGER,"
-            " [explicitlyTrashed] INTEGER, [parents] TEXT, [spaces] TEXT, [version]"
-            " TEXT, [webViewLink] TEXT, [iconLink] TEXT, [hasThumbnail] INTEGER,"
-            " [thumbnailVersion] TEXT, [viewedByMe] INTEGER, [createdTime] TEXT,"
-            " [modifiedTime] TEXT, [modifiedByMe] INTEGER, [owners] TEXT,"
-            " [lastModifyingUser] TEXT, [shared] INTEGER, [ownedByMe] INTEGER,"
+            " [owners] TEXT, [shared] INTEGER, [ownedByMe] INTEGER,"
             " [viewersCanCopyContent] INTEGER, [copyRequiresWriterPermission]"
             " INTEGER, [writersCanShare] INTEGER, [quotaBytesUsed] TEXT,"
             " [isAppAuthorized] INTEGER, [linkShareMetadata] TEXT,\n   FOREIGN"
-            " KEY([_parent]) REFERENCES [drive_folders]([id])\n);"
+            " KEY([_parent]) REFERENCES [drive_folders]([id]),\n   FOREIGN"
+            " KEY([lastModifyingUser]) REFERENCES [drive_users]([permissionId])\n);"
         )
+        files_rows = list(db["drive_files"].rows)
+        folders_rows = list(db["drive_folders"].rows)
+        users_rows = list(db["drive_users"].rows)
+        assert files_rows == [
+            {
+                "id": "1Xdqfeoi8B8YJJR0y-_oQlHYpjHHzD5a-",
+                "_parent": "113Wb_KLL1dtgx3vpeRfSTOYIUDf3QnnN",
+                "lastModifyingUser": "16974643384157631322",
+                "kind": "drive#file",
+                "name": "sample.csv",
+                "mimeType": "text/csv",
+                "starred": 0,
+                "trashed": 0,
+                "explicitlyTrashed": 0,
+                "parents": '["113Wb_KLL1dtgx3vpeRfSTOYIUDf3QnnN"]',
+                "spaces": '["drive"]',
+                "version": "2",
+                "webViewLink": "https://drive.google.com/file/d/1Xdqfeoi8B8YJJR0y-_oQlHYpjHHzD5a-/view?usp=drivesdk",
+                "iconLink": "https://drive-thirdparty.googleusercontent.com/16/type/text/csv",
+                "hasThumbnail": 0,
+                "thumbnailVersion": "0",
+                "viewedByMe": 1,
+                "createdTime": "2022-02-19T04:25:16.517Z",
+                "modifiedTime": "2020-11-11T18:10:31.000Z",
+                "modifiedByMe": 1,
+                "owners": '[{"kind": "drive#user", "displayName": "Simon Willison", "photoLink": "https://lh3.googleusercontent.com/a-/AOh14Gg9Loyxove5ocfBp0mg0u2afcTpM1no8QJnwbWnxw=s64", "me": true, "permissionId": "16974643384157631322", "emailAddress": "...@gmail.com"}]',
+                "shared": 0,
+                "ownedByMe": 1,
+                "viewersCanCopyContent": 1,
+                "copyRequiresWriterPermission": 0,
+                "writersCanShare": 1,
+                "quotaBytesUsed": "1070506",
+                "isAppAuthorized": 0,
+                "linkShareMetadata": '{"securityUpdateEligible": false, "securityUpdateEnabled": true}',
+            }
+        ]
+        assert folders_rows == [
+            {
+                "id": "1dbccBzomcvEUGdnoj8-9QG1yHxS0R-_j",
+                "_parent": "0AK1CICIR8ECDUk9PVA",
+                "lastModifyingUser": "16974643384157631322",
+                "kind": "drive#file",
+                "name": "test-folder",
+                "mimeType": "application/vnd.google-apps.folder",
+                "starred": 0,
+                "trashed": 0,
+                "explicitlyTrashed": 0,
+                "parents": '["0AK1CICIR8ECDUk9PVA"]',
+                "spaces": '["drive"]',
+                "version": "4",
+                "webViewLink": "https://drive.google.com/drive/folders/1dbccBzomcvEUGdnoj8-9QG1yHxS0R-_j",
+                "iconLink": "https://drive-thirdparty.googleusercontent.com/16/type/application/vnd.google-apps.folder",
+                "hasThumbnail": 0,
+                "thumbnailVersion": "0",
+                "viewedByMe": 1,
+                "createdTime": "2022-02-19T04:22:24.589Z",
+                "modifiedTime": "2022-02-19T04:22:24.589Z",
+                "modifiedByMe": 1,
+                "owners": '[{"kind": "drive#user", "displayName": "Simon Willison", "photoLink": "https://lh3.googleusercontent.com/a-/AOh14Gg9Loyxove5ocfBp0mg0u2afcTpM1no8QJnwbWnxw=s64", "me": true, "permissionId": "16974643384157631322", "emailAddress": "...@gmail.com"}]',
+                "shared": 0,
+                "ownedByMe": 1,
+                "viewersCanCopyContent": 1,
+                "copyRequiresWriterPermission": 0,
+                "writersCanShare": 1,
+                "folderColorRgb": "#8f8f8f",
+                "quotaBytesUsed": "0",
+                "isAppAuthorized": 0,
+                "linkShareMetadata": '{"securityUpdateEligible": false, "securityUpdateEnabled": true}',
+            },
+            {
+                "id": "1FYLDMMXi1-gGjxg8dLmvbiixDuR8-FZ3",
+                "_parent": "1dbccBzomcvEUGdnoj8-9QG1yHxS0R-_j",
+                "lastModifyingUser": "16974643384157631322",
+                "kind": "drive#file",
+                "name": "two",
+                "mimeType": "application/vnd.google-apps.folder",
+                "starred": 0,
+                "trashed": 0,
+                "explicitlyTrashed": 0,
+                "parents": '["1dbccBzomcvEUGdnoj8-9QG1yHxS0R-_j"]',
+                "spaces": '["drive"]',
+                "version": "1",
+                "webViewLink": "https://drive.google.com/drive/folders/1FYLDMMXi1-gGjxg8dLmvbiixDuR8-FZ3",
+                "iconLink": "https://drive-thirdparty.googleusercontent.com/16/type/application/vnd.google-apps.folder",
+                "hasThumbnail": 0,
+                "thumbnailVersion": "0",
+                "viewedByMe": 1,
+                "createdTime": "2022-02-19T04:22:38.714Z",
+                "modifiedTime": "2022-02-19T04:22:38.714Z",
+                "modifiedByMe": 1,
+                "owners": '[{"kind": "drive#user", "displayName": "Simon Willison", "photoLink": "https://lh3.googleusercontent.com/a-/AOh14Gg9Loyxove5ocfBp0mg0u2afcTpM1no8QJnwbWnxw=s64", "me": true, "permissionId": "16974643384157631322", "emailAddress": "...@gmail.com"}]',
+                "shared": 0,
+                "ownedByMe": 1,
+                "viewersCanCopyContent": 1,
+                "copyRequiresWriterPermission": 0,
+                "writersCanShare": 1,
+                "folderColorRgb": "#8f8f8f",
+                "quotaBytesUsed": "0",
+                "isAppAuthorized": 0,
+                "linkShareMetadata": '{"securityUpdateEligible": false, "securityUpdateEnabled": true}',
+            },
+            {
+                "id": "113Wb_KLL1dtgx3vpeRfSTOYIUDf3QnnN",
+                "_parent": "1dbccBzomcvEUGdnoj8-9QG1yHxS0R-_j",
+                "lastModifyingUser": "16974643384157631322",
+                "kind": "drive#file",
+                "name": "one",
+                "mimeType": "application/vnd.google-apps.folder",
+                "starred": 0,
+                "trashed": 0,
+                "explicitlyTrashed": 0,
+                "parents": '["1dbccBzomcvEUGdnoj8-9QG1yHxS0R-_j"]',
+                "spaces": '["drive"]',
+                "version": "2",
+                "webViewLink": "https://drive.google.com/drive/folders/113Wb_KLL1dtgx3vpeRfSTOYIUDf3QnnN",
+                "iconLink": "https://drive-thirdparty.googleusercontent.com/16/type/application/vnd.google-apps.folder",
+                "hasThumbnail": 0,
+                "thumbnailVersion": "0",
+                "viewedByMe": 1,
+                "createdTime": "2022-02-19T04:22:33.581Z",
+                "modifiedTime": "2022-02-19T04:22:33.581Z",
+                "modifiedByMe": 1,
+                "owners": '[{"kind": "drive#user", "displayName": "Simon Willison", "photoLink": "https://lh3.googleusercontent.com/a-/AOh14Gg9Loyxove5ocfBp0mg0u2afcTpM1no8QJnwbWnxw=s64", "me": true, "permissionId": "16974643384157631322", "emailAddress": "...@gmail.com"}]',
+                "shared": 0,
+                "ownedByMe": 1,
+                "viewersCanCopyContent": 1,
+                "copyRequiresWriterPermission": 0,
+                "writersCanShare": 1,
+                "folderColorRgb": "#8f8f8f",
+                "quotaBytesUsed": "0",
+                "isAppAuthorized": 0,
+                "linkShareMetadata": '{"securityUpdateEligible": false, "securityUpdateEnabled": true}',
+            },
+        ]
+        assert users_rows == [
+            {
+                "permissionId": "16974643384157631322",
+                "kind": "drive#user",
+                "displayName": "Simon Willison",
+                "photoLink": "https://lh3.googleusercontent.com/a-/AOh14Gg9Loyxove5ocfBp0mg0u2afcTpM1no8QJnwbWnxw=s64",
+                "me": 1,
+                "emailAddress": "...@gmail.com",
+            }
+        ]

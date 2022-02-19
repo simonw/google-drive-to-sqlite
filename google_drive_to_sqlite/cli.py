@@ -350,15 +350,20 @@ def files(
 def save_files_and_folders(db, all):
     # Ensure tables with foreign keys exist
     with db.conn:
+        if not db["drive_users"].exists():
+            db["drive_users"].create({"permissionId": str}, pk="permissionId")
         for table in ("drive_folders", "drive_files"):
             if not db[table].exists():
                 db[table].create(
-                    {"id": str, "_parent": str},
+                    {"id": str, "_parent": str, "lastModifyingUser": str},
                     pk="id",
                 )
                 # Gotta add foreign key after table is created, to avoid
                 # AlterError: No such column: drive_folders.id
                 db[table].add_foreign_key("_parent", "drive_folders", "id")
+                db[table].add_foreign_key(
+                    "lastModifyingUser", "drive_users", "permissionId"
+                )
     # Commit every 100 records
     for chunk in chunks(all, 100):
         # Add `_parent` columns
@@ -370,20 +375,31 @@ def save_files_and_folders(db, all):
                 folders.append(file)
             else:
                 files.append(file)
+        # Convert "lastModifyingUser" JSON into a foreign key reference to drive_users
+        for file in itertools.chain(folders, files):
+            if file.get("lastModifyingUser"):
+                file["lastModifyingUser"] = (
+                    db["drive_users"]
+                    .insert(
+                        file["lastModifyingUser"],
+                        replace=True,
+                        pk="permissionId",
+                        alter=True,
+                    )
+                    .last_pk
+                )
         with db.conn:
             db["drive_folders"].insert_all(
                 folders,
                 pk="id",
                 replace=True,
                 alter=True,
-                foreign_keys=(("_parent", "drive_folders", "id"),),
             )
             db["drive_files"].insert_all(
                 files,
                 pk="id",
                 replace=True,
                 alter=True,
-                foreign_keys=(("_parent", "drive_folders", "id"),),
             )
 
 
