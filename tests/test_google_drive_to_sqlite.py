@@ -1,6 +1,7 @@
 from click.testing import CliRunner
 from google_drive_to_sqlite.cli import cli, DEFAULT_FIELDS
 import json
+import pathlib
 import pytest
 import re
 import sqlite_utils
@@ -13,6 +14,9 @@ TOKEN_REQUEST_CONTENT = (
 )
 
 AUTH_JSON = {"google-drive-to-sqlite": {"refresh_token": "rtoken"}}
+FOLDER_AND_CHILDREN_JSON_PATH = (
+    pathlib.Path(__file__).parent / "folder-and-children.json"
+)
 
 
 @pytest.mark.parametrize(
@@ -160,14 +164,12 @@ def test_get_plain_text(httpx_mock):
     (
         (
             [],
-            (
-                '[\n  {\n    "id": 1\n  },\n  {\n    "id": 2\n  },\n  '
-                '{\n    "id": 3\n  },\n  {\n    "id": 4\n  }\n]\n'
-            ),
+            '[\n  {\n    "id": 1\n  },\n  {\n    "id": 2\n  },\n  '
+            '{\n    "id": 3\n  },\n  {\n    "id": 4\n  }\n]\n',
         ),
         (
             ["--nl"],
-            ('{"id": 1}\n{"id": 2}\n{"id": 3}\n{"id": 4}\n'),
+            '{"id": 1}\n{"id": 2}\n{"id": 3}\n{"id": 4}\n',
         ),
     ),
 )
@@ -466,3 +468,62 @@ def test_refresh_access_token_once_if_it_expires(httpx_mock):
         assert request2.url == "https://www.googleapis.com/drive/v3/about?fields=*"
     assert about_denied.headers["Authorization"] == "Bearer atoken"
     assert about_success.headers["Authorization"] == "Bearer atoken2"
+
+
+@pytest.mark.parametrize(
+    "opt,input",
+    (
+        ("--import-json", '[{"id": "one"}, {"id": "two"}]'),
+        ("--import-nl", '{"id": "one"}\n{"id": "two"}'),
+    ),
+)
+def test_files_input(httpx_mock, opt, input):
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        result = runner.invoke(cli, ["files", "test.db", opt, "-"], input=input)
+        assert len(httpx_mock.get_requests()) == 0
+        assert result.exit_code == 0
+        db = sqlite_utils.Database("test.db")
+        assert db.table_names() == ["drive_folders", "drive_files"]
+        assert list(db["drive_files"].rows) == [
+            {"id": "one", "_parent": None},
+            {"id": "two", "_parent": None},
+        ]
+
+
+def test_files_input_real_example(httpx_mock):
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        result = runner.invoke(
+            cli, ["files", "test.db", "--import-json", FOLDER_AND_CHILDREN_JSON_PATH]
+        )
+        assert len(httpx_mock.get_requests()) == 0
+        assert result.exit_code == 0
+        db = sqlite_utils.Database("test.db")
+        assert db.table_names() == ["drive_folders", "drive_files"]
+        assert (
+            db.schema
+            == "CREATE TABLE [drive_folders] (\n   [id] TEXT PRIMARY KEY,\n   [_parent]"
+            " TEXT, [kind] TEXT, [name] TEXT, [mimeType] TEXT, [starred] INTEGER,"
+            " [trashed] INTEGER, [explicitlyTrashed] INTEGER, [parents] TEXT,"
+            " [spaces] TEXT, [version] TEXT, [webViewLink] TEXT, [iconLink] TEXT,"
+            " [hasThumbnail] INTEGER, [thumbnailVersion] TEXT, [viewedByMe] INTEGER,"
+            " [createdTime] TEXT, [modifiedTime] TEXT, [modifiedByMe] INTEGER,"
+            " [owners] TEXT, [lastModifyingUser] TEXT, [shared] INTEGER, [ownedByMe]"
+            " INTEGER, [viewersCanCopyContent] INTEGER,"
+            " [copyRequiresWriterPermission] INTEGER, [writersCanShare] INTEGER,"
+            " [folderColorRgb] TEXT, [quotaBytesUsed] TEXT, [isAppAuthorized]"
+            " INTEGER, [linkShareMetadata] TEXT,\n   FOREIGN KEY([_parent])"
+            " REFERENCES [drive_folders]([id])\n);\nCREATE TABLE [drive_files] (\n  "
+            " [id] TEXT PRIMARY KEY,\n   [_parent] TEXT, [kind] TEXT, [name] TEXT,"
+            " [mimeType] TEXT, [starred] INTEGER, [trashed] INTEGER,"
+            " [explicitlyTrashed] INTEGER, [parents] TEXT, [spaces] TEXT, [version]"
+            " TEXT, [webViewLink] TEXT, [iconLink] TEXT, [hasThumbnail] INTEGER,"
+            " [thumbnailVersion] TEXT, [viewedByMe] INTEGER, [createdTime] TEXT,"
+            " [modifiedTime] TEXT, [modifiedByMe] INTEGER, [owners] TEXT,"
+            " [lastModifyingUser] TEXT, [shared] INTEGER, [ownedByMe] INTEGER,"
+            " [viewersCanCopyContent] INTEGER, [copyRequiresWriterPermission]"
+            " INTEGER, [writersCanShare] INTEGER, [quotaBytesUsed] TEXT,"
+            " [isAppAuthorized] INTEGER, [linkShareMetadata] TEXT,\n   FOREIGN"
+            " KEY([_parent]) REFERENCES [drive_folders]([id])\n);"
+        )

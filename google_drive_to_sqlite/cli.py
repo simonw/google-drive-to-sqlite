@@ -249,7 +249,19 @@ def get(url, auth, paginate, nl, stop_after):
     "--nl", is_flag=True, help="Output newline-delimited JSON rather than write to DB"
 )
 @click.option("--stop-after", type=int, help="Stop paginating after X results")
-def files(database, auth, folder, q, full_text, json_, nl, stop_after):
+@click.option(
+    "--import-json",
+    type=click.Path(file_okay=True, dir_okay=False, allow_dash=True),
+    help="Import from this JSON file instead of the API",
+)
+@click.option(
+    "--import-nl",
+    type=click.Path(file_okay=True, dir_okay=False, allow_dash=True),
+    help="Import from this newline-delimited JSON file",
+)
+def files(
+    database, auth, folder, q, full_text, json_, nl, stop_after, import_json, import_nl
+):
     """
     Retrieve metadata for files in Google Drive, and write to a SQLite database
     or output as JSON.
@@ -271,12 +283,43 @@ def files(database, auth, folder, q, full_text, json_, nl, stop_after):
         raise click.ClickException("Cannot use -q and --full-text at the same time")
     if full_text:
         q = "fullText contains '{}'".format(full_text.replace("'", ""))
-    tokens = load_tokens(auth)
-    client = APIClient(**tokens)
-    if folder:
-        all = files_in_folder_recursive(client, folder, fields=DEFAULT_FIELDS)
+
+    client = None
+    if not (import_json or import_nl):
+        tokens = load_tokens(auth)
+        client = APIClient(**tokens)
+
+    if import_json or import_nl:
+        if "-" in (import_json, import_nl):
+            fp = sys.stdin
+        else:
+            fp = open(import_json or import_nl)
+        if import_json:
+            all = json.load(fp)
+        else:
+
+            def _nl():
+                for line in fp:
+                    line = line.strip()
+                    if line:
+                        yield json.loads(line)
+
+            all = _nl()
     else:
-        all = paginate_files(client, q=q, fields=DEFAULT_FIELDS)
+        if folder:
+            all_in_folder = files_in_folder_recursive(
+                client, folder, fields=DEFAULT_FIELDS
+            )
+            # Fetch details of that folder first
+            folder_details = get_file(client, folder, fields=DEFAULT_FIELDS)
+
+            def folder_details_then_all():
+                yield folder_details
+                yield from all_in_folder
+
+            all = folder_details_then_all()
+        else:
+            all = paginate_files(client, q=q, fields=DEFAULT_FIELDS)
 
     if stop_after:
         prev_all = all
@@ -290,17 +333,6 @@ def files(database, auth, folder, q, full_text, json_, nl, stop_after):
                     break
 
         all = stop_after_all()
-
-    if folder:
-        # Fetch details of that folder first
-        folder_details = get_file(client, folder, fields=DEFAULT_FIELDS)
-        old_all = all
-
-        def folder_details_then_all():
-            yield folder_details
-            yield from old_all
-
-        all = folder_details_then_all()
 
     if nl:
         for file in all:

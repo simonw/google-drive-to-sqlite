@@ -109,6 +109,13 @@ Use `--full-text TEXT` to search for files where the full text matches a search 
 
 Use `--stop-after X` to stop after retrieving X files.
 
+The `--import-json` and `--import-nl` options are mainly useful for testing and developing this tool. They allow you to replay the JSON or newline-delimited JSON that was previously fetched using `--json` or `--nl` and use it to create a fresh SQLite database, without needing to make any outbound API calls:
+
+    # Fetch all starred files from the API, write to starred.json
+    google-drive-to-sqlite files -q 'starred = true' --json > starred.json
+    # Now import that data into a new SQLite database file
+    google-drive-to-sqlite files starred.db --import-json starred.json
+
 Full `--help`:
 
 <!-- [[[cog
@@ -144,6 +151,8 @@ Options:
   --json                Output JSON rather than write to DB
   --nl                  Output newline-delimited JSON rather than write to DB
   --stop-after INTEGER  Stop paginating after X results
+  --import-json FILE    Import from this JSON file instead of the API
+  --import-nl FILE      Import from this newline-delimited JSON file
   --help                Show this message and exit.
 
 ```
