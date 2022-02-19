@@ -88,25 +88,25 @@ class APIClient:
         self.access_token = data["access_token"]
         return self.access_token
 
-    def get(self, url, params=None, headers=None, allow_retry=True):
+    def get(self, url, params=None, headers=None, allow_token_refresh=True):
         headers = headers or {}
         headers["Authorization"] = "Bearer {}".format(self.get_access_token())
         self.log("GET: {} {}".format(url, params))
         response = httpx.get(url, params=params, headers=headers, timeout=self.timeout)
-        if response.status_code == 401 and allow_retry:
+        if response.status_code == 401 and allow_token_refresh:
             # Try again after refreshing the token
             self.get_access_token(force_refresh=True)
-            return self.get(url, params, headers, allow_retry=False)
+            return self.get(url, params, headers, allow_token_refresh=False)
         return response
 
-    def post(self, url, data=None, headers=None, allow_retry=True):
+    def post(self, url, data=None, headers=None, allow_token_refresh=True):
         headers = headers or {}
         headers["Authorization"] = "Bearer {}".format(self.get_access_token())
         self.log("POST: {}".format(url))
         response = httpx.post(url, data=data, headers=headers, timeout=self.timeout)
-        if response.status_code == 403 and allow_retry:
+        if response.status_code == 403 and allow_token_refresh:
             self.get_access_token(force_refresh=True)
-            return self.post(url, data, headers, allow_retry=False)
+            return self.post(url, data, headers, allow_token_refresh=False)
         return response
 
     @contextmanager
