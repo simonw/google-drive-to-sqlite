@@ -282,6 +282,91 @@ Options:
 ```
 <!-- [[[end]]] -->
 
+
+## Database schema
+
+The database created by this tool has the following schema:
+
+<!-- [[[cog
+import tempfile, pathlib, sqlite_utils
+tmpdir = pathlib.Path(tempfile.mkdtemp())
+db_path = str(tmpdir / "docs.db")
+result = runner.invoke(cli.cli, [
+    "files", db_path, "--import-json", "tests/folder-and-children.json"
+])
+cog.out("```sql\n")
+cog.out(sqlite_utils.Database(db_path).schema.replace(', [', ',\n   ['))
+cog.out("\n```")
+]]] -->
+```sql
+CREATE TABLE [drive_folders] (
+   [id] TEXT PRIMARY KEY,
+   [_parent] TEXT,
+   [kind] TEXT,
+   [name] TEXT,
+   [mimeType] TEXT,
+   [starred] INTEGER,
+   [trashed] INTEGER,
+   [explicitlyTrashed] INTEGER,
+   [parents] TEXT,
+   [spaces] TEXT,
+   [version] TEXT,
+   [webViewLink] TEXT,
+   [iconLink] TEXT,
+   [hasThumbnail] INTEGER,
+   [thumbnailVersion] TEXT,
+   [viewedByMe] INTEGER,
+   [createdTime] TEXT,
+   [modifiedTime] TEXT,
+   [modifiedByMe] INTEGER,
+   [owners] TEXT,
+   [lastModifyingUser] TEXT,
+   [shared] INTEGER,
+   [ownedByMe] INTEGER,
+   [viewersCanCopyContent] INTEGER,
+   [copyRequiresWriterPermission] INTEGER,
+   [writersCanShare] INTEGER,
+   [folderColorRgb] TEXT,
+   [quotaBytesUsed] TEXT,
+   [isAppAuthorized] INTEGER,
+   [linkShareMetadata] TEXT,
+   FOREIGN KEY([_parent]) REFERENCES [drive_folders]([id])
+);
+CREATE TABLE [drive_files] (
+   [id] TEXT PRIMARY KEY,
+   [_parent] TEXT,
+   [kind] TEXT,
+   [name] TEXT,
+   [mimeType] TEXT,
+   [starred] INTEGER,
+   [trashed] INTEGER,
+   [explicitlyTrashed] INTEGER,
+   [parents] TEXT,
+   [spaces] TEXT,
+   [version] TEXT,
+   [webViewLink] TEXT,
+   [iconLink] TEXT,
+   [hasThumbnail] INTEGER,
+   [thumbnailVersion] TEXT,
+   [viewedByMe] INTEGER,
+   [createdTime] TEXT,
+   [modifiedTime] TEXT,
+   [modifiedByMe] INTEGER,
+   [owners] TEXT,
+   [lastModifyingUser] TEXT,
+   [shared] INTEGER,
+   [ownedByMe] INTEGER,
+   [viewersCanCopyContent] INTEGER,
+   [copyRequiresWriterPermission] INTEGER,
+   [writersCanShare] INTEGER,
+   [quotaBytesUsed] TEXT,
+   [isAppAuthorized] INTEGER,
+   [linkShareMetadata] TEXT,
+   FOREIGN KEY([_parent]) REFERENCES [drive_folders]([id])
+);
+```
+<!-- [[[end]]] -->
+
 ## Privacy policy
 
 This tool requests access to your Google Drive account in order to retrieve metadata about your files there. It also offers a feature that can download the content of those files.
