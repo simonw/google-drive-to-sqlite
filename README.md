@@ -105,11 +105,18 @@ Use `--q QUERY` to use a [custom search query](https://developers.google.com/dri
 
     google-drive-to-sqlite files files.db -q 'starred = true'
 
-Use `--full-text TEXT` to search for files where the full text matches a search term:
+The following shortcut options help build queries:
 
-    google-drive-to-sqlite files files.db --full-text 'datasette'
+- `--full-text TEXT` to search for files where the full text matches a search term
+- `--starred` for files and folders you have starred
+- `--trashed` for files and folders in the trash
+- `--shared-with-me` for files and folders that have been shared with you
 
-Use `--stop-after X` to stop after retrieving X files.
+You can combine these - for example, this returns all files that you have starred and that were shared with you:
+
+    google-drive-to-sqlite files highlights.db --starred --shared-with-me
+
+You can use `--stop-after X` to stop after retrieving X files, useful for trying out a new search pattern and seeing results straight away.
 
 The `--import-json` and `--import-nl` options are mainly useful for testing and developing this tool. They allow you to replay the JSON or newline-delimited JSON that was previously fetched using `--json` or `--nl` and use it to create a fresh SQLite database, without needing to make any outbound API calls:
 
@@ -150,6 +157,9 @@ Options:
   --folder TEXT         Files in this folder ID and its sub-folders
   -q TEXT               Files matching this query
   --full-text TEXT      Search for files with text match
+  --starred             Files you have starred
+  --trashed             Files in the trash
+  --shared-with-me      Files that have been shared with you
   --json                Output JSON rather than write to DB
   --nl                  Output newline-delimited JSON rather than write to DB
   --stop-after INTEGER  Stop paginating after X results

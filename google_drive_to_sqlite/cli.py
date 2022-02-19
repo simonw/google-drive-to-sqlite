@@ -242,6 +242,11 @@ def get(url, auth, paginate, nl, stop_after):
 @click.option("--folder", help="Files in this folder ID and its sub-folders")
 @click.option("-q", help="Files matching this query")
 @click.option("--full-text", help="Search for files with text match")
+@click.option("--starred", is_flag=True, help="Files you have starred")
+@click.option("--trashed", is_flag=True, help="Files in the trash")
+@click.option(
+    "--shared-with-me", is_flag=True, help="Files that have been shared with you"
+)
 @click.option(
     "json_", "--json", is_flag=True, help="Output JSON rather than write to DB"
 )
@@ -260,7 +265,19 @@ def get(url, auth, paginate, nl, stop_after):
     help="Import from this newline-delimited JSON file",
 )
 def files(
-    database, auth, folder, q, full_text, json_, nl, stop_after, import_json, import_nl
+    database,
+    auth,
+    folder,
+    q,
+    full_text,
+    starred,
+    trashed,
+    shared_with_me,
+    json_,
+    nl,
+    stop_after,
+    import_json,
+    import_nl,
 ):
     """
     Retrieve metadata for files in Google Drive, and write to a SQLite database
@@ -279,10 +296,18 @@ def files(
     """
     if not database and not json_ and not nl:
         raise click.ClickException("Must either provide database or use --json or --nl")
-    if q and full_text:
-        raise click.ClickException("Cannot use -q and --full-text at the same time")
+    q_bits = []
+    if q:
+        q_bits.append(q)
     if full_text:
-        q = "fullText contains '{}'".format(full_text.replace("'", ""))
+        q_bits.append("fullText contains '{}'".format(full_text.replace("'", "")))
+    if starred:
+        q_bits.append("starred = true")
+    if trashed:
+        q_bits.append("trashed = true")
+    if shared_with_me:
+        q_bits.append("sharedWithMe = true")
+    q = " and ".join(q_bits)
 
     client = None
     if not (import_json or import_nl):

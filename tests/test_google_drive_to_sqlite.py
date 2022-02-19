@@ -208,6 +208,13 @@ def test_get_paginated(httpx_mock, opts, expected_output):
         ([], ""),
         (["-q", "starred = true"], "&q=starred+%3D+true"),
         (["--full-text", "search"], "&q=fullText+contains+%27search%27"),
+        (["--starred"], "&q=starred+%3D+true"),
+        (["--trashed"], "&q=trashed+%3D+true"),
+        (["--shared-with-me"], "&q=sharedWithMe+%3D+true"),
+        (
+            ["--starred", "--trashed", "--shared-with-me"],
+            "&q=starred+%3D+true+and+trashed+%3D+true+and+sharedWithMe+%3D+true",
+        ),
     ),
 )
 @pytest.mark.parametrize("use_db", (True, False))

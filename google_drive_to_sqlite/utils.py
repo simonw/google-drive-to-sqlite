@@ -26,7 +26,7 @@ def paginate_files(client, *, corpora=None, q=None, fields=None):
         params["corpora"] = corpora
     if fields is not None:
         params["fields"] = "nextPageToken, files({})".format(",".join(fields))
-    if q is not None:
+    if q:
         params["q"] = q
     while True:
         if pageToken is not None:
