@@ -91,7 +91,7 @@ This will default to writing details about every file in your Google Drive to a 
 
 Files and folders will be written to databases tables, which will be created if they do not yet exist. The database schema is [shown below](#database-schema).
 
-If a file already exists in that table, based on a matching `id`, it will be replaced with fresh data.
+If a file or folder already exists, based on a matching `id`, it will be replaced with fresh data.
 
 Instead of writing to SQLite you can use `--json` to output as JSON, or `--nl` to output as newline-delimited JSON:
 
