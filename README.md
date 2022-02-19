@@ -188,6 +188,7 @@ Options:
   --stop-after INTEGER  Stop paginating after X results
   --import-json FILE    Import from this JSON file instead of the API
   --import-nl FILE      Import from this newline-delimited JSON file
+  -v, --verbose         Send verbose output to stderr
   --help                Show this message and exit.
 
 ```

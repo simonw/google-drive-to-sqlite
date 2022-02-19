@@ -264,7 +264,8 @@ def test_files_basic(httpx_mock, opts, extra_qs, use_db):
             assert results == [{"id": 1}, {"id": 2}, {"id": 3}, {"id": 4}]
 
 
-def test_files_basic_stop_after(httpx_mock):
+@pytest.mark.parametrize("verbosity_arg", ("-v", "--verbose"))
+def test_files_basic_stop_after_also_test_verbose(httpx_mock, verbosity_arg):
     httpx_mock.add_response(
         method="POST",
         json={"access_token": "atoken"},
@@ -272,11 +273,21 @@ def test_files_basic_stop_after(httpx_mock):
     httpx_mock.add_response(
         json={"nextPageToken": None, "files": [{"id": 3}, {"id": 4}]},
     )
-    runner = CliRunner()
+    runner = CliRunner(mix_stderr=False)
     with runner.isolated_filesystem():
         open("auth.json", "w").write(json.dumps(AUTH_JSON))
-        args = ["files", "--json", "--stop-after", "1"]
+        args = ["files", "--json", "--stop-after", "1", verbosity_arg]
         result = runner.invoke(cli, args)
+        assert result.stderr == (
+            "POST https://www.googleapis.com/oauth2/v4/token\n"
+            "GET: https://www.googleapis.com/drive/v3/files "
+            "{'fields': 'nextPageToken, files(kind,id,name,mimeType,starred,trashed,"
+            "explicitlyTrashed,parents,spaces,version,webViewLink,iconLink,hasThumbnail,"
+            "thumbnailVersion,viewedByMe,createdTime,modifiedTime,modifiedByMe,owners,"
+            "lastModifyingUser,shared,ownedByMe,viewersCanCopyContent,"
+            "copyRequiresWriterPermission,writersCanShare,folderColorRgb,quotaBytesUsed,"
+            "isAppAuthorized,linkShareMetadata)'}\n"
+        )
         token_request, page1_request = httpx_mock.get_requests()
         assert token_request.content == TOKEN_REQUEST_CONTENT
         assert page1_request.url == (

@@ -61,17 +61,20 @@ class APIClient:
 
     timeout = 30.0
 
-    def __init__(self, refresh_token, client_id, client_secret):
+    def __init__(self, refresh_token, client_id, client_secret, logger=None):
         self.refresh_token = refresh_token
         self.access_token = None
         self.client_id = client_id
         self.client_secret = client_secret
+        self.log = logger or (lambda s: None)
 
     def get_access_token(self, force_refresh=False):
         if self.access_token and not force_refresh:
             return self.access_token
+        url = "https://www.googleapis.com/oauth2/v4/token"
+        self.log("POST {}".format(url))
         data = httpx.post(
-            "https://www.googleapis.com/oauth2/v4/token",
+            url,
             data={
                 "grant_type": "refresh_token",
                 "refresh_token": self.refresh_token,
@@ -88,6 +91,7 @@ class APIClient:
     def get(self, url, params=None, headers=None, allow_retry=True):
         headers = headers or {}
         headers["Authorization"] = "Bearer {}".format(self.get_access_token())
+        self.log("GET: {} {}".format(url, params))
         response = httpx.get(url, params=params, headers=headers, timeout=self.timeout)
         if response.status_code == 401 and allow_retry:
             # Try again after refreshing the token
@@ -98,6 +102,7 @@ class APIClient:
     def post(self, url, data=None, headers=None, allow_retry=True):
         headers = headers or {}
         headers["Authorization"] = "Bearer {}".format(self.get_access_token())
+        self.log("POST: {}".format(url))
         response = httpx.post(url, data=data, headers=headers, timeout=self.timeout)
         if response.status_code == 403 and allow_retry:
             self.get_access_token(force_refresh=True)

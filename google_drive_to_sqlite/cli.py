@@ -270,6 +270,12 @@ def get(url, auth, paginate, nl, stop_after):
     type=click.Path(file_okay=True, dir_okay=False, allow_dash=True),
     help="Import from this newline-delimited JSON file",
 )
+@click.option(
+    "-v",
+    "--verbose",
+    is_flag=True,
+    help="Send verbose output to stderr",
+)
 def files(
     database,
     auth,
@@ -284,6 +290,7 @@ def files(
     stop_after,
     import_json,
     import_nl,
+    verbose,
 ):
     """
     Retrieve metadata for files in Google Drive, and write to a SQLite database
@@ -319,10 +326,15 @@ def files(
         q_bits.append("sharedWithMe = true")
     q = " and ".join(q_bits)
 
+    if q and verbose:
+        click.echo("?q= query: {}".format(q), err=True)
+
     client = None
     if not (import_json or import_nl):
-        tokens = load_tokens(auth)
-        client = APIClient(**tokens)
+        kwargs = load_tokens(auth)
+        if verbose:
+            kwargs["logger"] = lambda s: click.echo(s, err=True)
+        client = APIClient(**kwargs)
 
     if import_json or import_nl:
         if "-" in (import_json, import_nl):
