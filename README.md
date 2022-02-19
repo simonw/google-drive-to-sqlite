@@ -238,7 +238,7 @@ If the resource you are fetching supports pagination you can use `--paginate key
                 "mimeType": "application/vnd.google-apps.spreadsheet"
             },
 
-To paginate through everything in the `files` list you would use `--paginate files` lyike this:
+To paginate through everything in the `files` list you would use `--paginate files` like this:
 
     % google-drive-to-sqlite get https://www.googleapis.com/drive/v3/files --paginate files
     [
