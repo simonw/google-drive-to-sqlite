@@ -169,6 +169,10 @@ Usage: google-drive-to-sqlite files [OPTIONS] [DATABASE]
       google-drive-to-sqlite files files.db --folder
       1E6Zg2X2bjjtPzVfX8YqdXZDCoB3AVA7i
 
+  Fetch files you have starred:
+
+      google-drive-to-sqlite files starred.db --starred
+
 Options:
   -a, --auth FILE       Path to auth.json token file
   --folder TEXT         Files in this folder ID and its sub-folders

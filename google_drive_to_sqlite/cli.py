@@ -293,6 +293,10 @@ def files(
     sub-folders:
 
         google-drive-to-sqlite files files.db --folder 1E6Zg2X2bjjtPzVfX8YqdXZDCoB3AVA7i
+
+    Fetch files you have starred:
+
+        google-drive-to-sqlite files starred.db --starred
     """
     if not database and not json_ and not nl:
         raise click.ClickException("Must either provide database or use --json or --nl")
