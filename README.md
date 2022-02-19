@@ -89,7 +89,7 @@ This will default to writing details about every file in your Google Drive to a 
 
     google-drive-to-sqlite files files.db
 
-Files will be written to a `files` table, which will be created if it does not yet exist.
+Files and folders will be written to databases tables, which will be created if they do not yet exist. The database schema is [shown below](#database-schema).
 
 If a file already exists in that table, based on a matching `id`, it will be replaced with fresh data.
 
