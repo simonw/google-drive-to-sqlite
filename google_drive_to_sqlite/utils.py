@@ -1,6 +1,7 @@
 from contextlib import contextmanager
 import click
 import httpx
+import itertools
 
 
 class FilesError(Exception):
@@ -111,3 +112,65 @@ class APIClient:
             headers={"Authorization": "Bearer {}".format(self.get_access_token())},
         ) as stream:
             yield stream
+
+
+def save_files_and_folders(db, all):
+    # Ensure tables with foreign keys exist
+    with db.conn:
+        if not db["drive_users"].exists():
+            db["drive_users"].create({"permissionId": str}, pk="permissionId")
+        for table in ("drive_folders", "drive_files"):
+            if not db[table].exists():
+                db[table].create(
+                    {"id": str, "_parent": str, "lastModifyingUser": str},
+                    pk="id",
+                )
+                # Gotta add foreign key after table is created, to avoid
+                # AlterError: No such column: drive_folders.id
+                db[table].add_foreign_key("_parent", "drive_folders", "id")
+                db[table].add_foreign_key(
+                    "lastModifyingUser", "drive_users", "permissionId"
+                )
+    # Commit every 100 records
+    for chunk in chunks(all, 100):
+        # Add `_parent` columns
+        files = []
+        folders = []
+        for file in chunk:
+            file["_parent"] = file["parents"][0] if file.get("parents") else None
+            if file.get("mimeType") == "application/vnd.google-apps.folder":
+                folders.append(file)
+            else:
+                files.append(file)
+        # Convert "lastModifyingUser" JSON into a foreign key reference to drive_users
+        for file in itertools.chain(folders, files):
+            if file.get("lastModifyingUser"):
+                file["lastModifyingUser"] = (
+                    db["drive_users"]
+                    .insert(
+                        file["lastModifyingUser"],
+                        replace=True,
+                        pk="permissionId",
+                        alter=True,
+                    )
+                    .last_pk
+                )
+        with db.conn:
+            db["drive_folders"].insert_all(
+                folders,
+                pk="id",
+                replace=True,
+                alter=True,
+            )
+            db["drive_files"].insert_all(
+                files,
+                pk="id",
+                replace=True,
+                alter=True,
+            )
+
+
+def chunks(sequence, size):
+    iterator = iter(sequence)
+    for item in iterator:
+        yield itertools.chain([item], itertools.islice(iterator, size - 1))
