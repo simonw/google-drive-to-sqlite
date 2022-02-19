@@ -295,18 +295,23 @@ result = runner.invoke(cli.cli, [
     "files", db_path, "--import-json", "tests/folder-and-children.json"
 ])
 cog.out("```sql\n")
-cog.out(sqlite_utils.Database(db_path).schema.replace(', [', ',\n   ['))
+schema = sqlite_utils.Database(db_path).schema
+# Tidy up some formatting
+schema = schema.replace(", [", ",\n   [")
+schema = schema.replace("\n,\n", ",\n")
+schema = schema.replace("TEXT);", "TEXT\n);")
+cog.out(schema)
 cog.out("\n```")
 ]]] -->
 ```sql
 CREATE TABLE [drive_users] (
-   [permissionId] TEXT PRIMARY KEY
-,
+   [permissionId] TEXT PRIMARY KEY,
    [kind] TEXT,
    [displayName] TEXT,
    [photoLink] TEXT,
    [me] INTEGER,
-   [emailAddress] TEXT);
+   [emailAddress] TEXT
+);
 CREATE TABLE [drive_folders] (
    [id] TEXT PRIMARY KEY,
    [_parent] TEXT,
