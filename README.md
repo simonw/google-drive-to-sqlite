@@ -299,9 +299,18 @@ cog.out(sqlite_utils.Database(db_path).schema.replace(', [', ',\n   ['))
 cog.out("\n```")
 ]]] -->
 ```sql
+CREATE TABLE [drive_users] (
+   [permissionId] TEXT PRIMARY KEY
+,
+   [kind] TEXT,
+   [displayName] TEXT,
+   [photoLink] TEXT,
+   [me] INTEGER,
+   [emailAddress] TEXT);
 CREATE TABLE [drive_folders] (
    [id] TEXT PRIMARY KEY,
    [_parent] TEXT,
+   [lastModifyingUser] TEXT,
    [kind] TEXT,
    [name] TEXT,
    [mimeType] TEXT,
@@ -320,7 +329,6 @@ CREATE TABLE [drive_folders] (
    [modifiedTime] TEXT,
    [modifiedByMe] INTEGER,
    [owners] TEXT,
-   [lastModifyingUser] TEXT,
    [shared] INTEGER,
    [ownedByMe] INTEGER,
    [viewersCanCopyContent] INTEGER,
@@ -330,11 +338,13 @@ CREATE TABLE [drive_folders] (
    [quotaBytesUsed] TEXT,
    [isAppAuthorized] INTEGER,
    [linkShareMetadata] TEXT,
-   FOREIGN KEY([_parent]) REFERENCES [drive_folders]([id])
+   FOREIGN KEY([_parent]) REFERENCES [drive_folders]([id]),
+   FOREIGN KEY([lastModifyingUser]) REFERENCES [drive_users]([permissionId])
 );
 CREATE TABLE [drive_files] (
    [id] TEXT PRIMARY KEY,
    [_parent] TEXT,
+   [lastModifyingUser] TEXT,
    [kind] TEXT,
    [name] TEXT,
    [mimeType] TEXT,
@@ -353,7 +363,6 @@ CREATE TABLE [drive_files] (
    [modifiedTime] TEXT,
    [modifiedByMe] INTEGER,
    [owners] TEXT,
-   [lastModifyingUser] TEXT,
    [shared] INTEGER,
    [ownedByMe] INTEGER,
    [viewersCanCopyContent] INTEGER,
@@ -362,7 +371,8 @@ CREATE TABLE [drive_files] (
    [quotaBytesUsed] TEXT,
    [isAppAuthorized] INTEGER,
    [linkShareMetadata] TEXT,
-   FOREIGN KEY([_parent]) REFERENCES [drive_folders]([id])
+   FOREIGN KEY([_parent]) REFERENCES [drive_folders]([id]),
+   FOREIGN KEY([lastModifyingUser]) REFERENCES [drive_users]([permissionId])
 );
 ```
 <!-- [[[end]]] -->
