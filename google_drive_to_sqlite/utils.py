@@ -131,7 +131,23 @@ def save_files_and_folders(db, all):
                 db[table].add_foreign_key(
                     "lastModifyingUser", "drive_users", "permissionId"
                 )
+            # Create owners table too
+            owners_table = "{}_owners".format(table)
+            if not db[owners_table].exists():
+                db[owners_table].create(
+                    {
+                        "item_id": str,
+                        "user_id": str,
+                    },
+                    foreign_keys=(
+                        ("user_id", "drive_users", "permissionId"),
+                        ("item_id", table, "id"),
+                    ),
+                    pk=("item_id", "user_id"),
+                )
+
     # Commit every 100 records
+    users_seen = set()
     for chunk in chunks(all, 100):
         # Add `_parent` columns
         files = []
@@ -143,18 +159,44 @@ def save_files_and_folders(db, all):
             else:
                 files.append(file)
         # Convert "lastModifyingUser" JSON into a foreign key reference to drive_users
-        for file in itertools.chain(folders, files):
-            if file.get("lastModifyingUser"):
-                file["lastModifyingUser"] = (
-                    db["drive_users"]
-                    .insert(
-                        file["lastModifyingUser"],
-                        replace=True,
-                        pk="permissionId",
-                        alter=True,
+        drive_folders_owners_to_insert = []
+        drive_files_owners_to_insert = []
+        for to_insert_list, sequence in (
+            (drive_folders_owners_to_insert, folders),
+            (drive_files_owners_to_insert, files),
+        ):
+            for file in sequence:
+                if file.get("lastModifyingUser"):
+                    file["lastModifyingUser"] = (
+                        db["drive_users"]
+                        .insert(
+                            file["lastModifyingUser"],
+                            replace=True,
+                            pk="permissionId",
+                            alter=True,
+                        )
+                        .last_pk
                     )
-                    .last_pk
-                )
+                owners = file.pop("owners", None)
+                if owners:
+                    # Insert any missing ones
+                    missing_users = [
+                        user
+                        for user in owners
+                        if user["permissionId"] not in users_seen
+                    ]
+                    if missing_users:
+                        db["drive_users"].insert_all(
+                            missing_users,
+                            replace=True,
+                            alter=True,
+                        )
+                        users_seen.update(u["permissionId"] for u in missing_users)
+                    for owner in owners:
+                        to_insert_list.append(
+                            {"item_id": file["id"], "user_id": owner["permissionId"]}
+                        )
+
         with db.conn:
             db["drive_folders"].insert_all(
                 folders,
@@ -168,6 +210,14 @@ def save_files_and_folders(db, all):
                 replace=True,
                 alter=True,
             )
+            if drive_folders_owners_to_insert:
+                db["drive_folders_owners"].insert_all(
+                    drive_folders_owners_to_insert, replace=True
+                )
+            if drive_files_owners_to_insert:
+                db["drive_files_owners"].insert_all(
+                    drive_files_owners_to_insert, replace=True
+                )
 
 
 def chunks(sequence, size):

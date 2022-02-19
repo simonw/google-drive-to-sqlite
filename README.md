@@ -366,7 +366,6 @@ CREATE TABLE [drive_folders] (
    [createdTime] TEXT,
    [modifiedTime] TEXT,
    [modifiedByMe] INTEGER,
-   [owners] TEXT,
    [shared] INTEGER,
    [ownedByMe] INTEGER,
    [viewersCanCopyContent] INTEGER,
@@ -378,6 +377,12 @@ CREATE TABLE [drive_folders] (
    [linkShareMetadata] TEXT,
    FOREIGN KEY([_parent]) REFERENCES [drive_folders]([id]),
    FOREIGN KEY([lastModifyingUser]) REFERENCES [drive_users]([permissionId])
+);
+CREATE TABLE [drive_folders_owners] (
+   [item_id] TEXT REFERENCES [drive_folders]([id]),
+   [user_id] TEXT REFERENCES [drive_users]([permissionId]),
+   PRIMARY KEY ([item_id],
+   [user_id])
 );
 CREATE TABLE [drive_files] (
    [id] TEXT PRIMARY KEY,
@@ -400,7 +405,6 @@ CREATE TABLE [drive_files] (
    [createdTime] TEXT,
    [modifiedTime] TEXT,
    [modifiedByMe] INTEGER,
-   [owners] TEXT,
    [shared] INTEGER,
    [ownedByMe] INTEGER,
    [viewersCanCopyContent] INTEGER,
@@ -411,6 +415,12 @@ CREATE TABLE [drive_files] (
    [linkShareMetadata] TEXT,
    FOREIGN KEY([_parent]) REFERENCES [drive_folders]([id]),
    FOREIGN KEY([lastModifyingUser]) REFERENCES [drive_users]([permissionId])
+);
+CREATE TABLE [drive_files_owners] (
+   [item_id] TEXT REFERENCES [drive_files]([id]),
+   [user_id] TEXT REFERENCES [drive_users]([permissionId]),
+   PRIMARY KEY ([item_id],
+   [user_id])
 );
 ```
 <!-- [[[end]]] -->
