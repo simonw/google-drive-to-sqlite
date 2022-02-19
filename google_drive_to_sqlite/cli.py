@@ -8,7 +8,7 @@ import sqlite_utils
 import sys
 import textwrap
 import urllib.parse
-from .utils import APIClient, files_in_folder_recursive, paginate_files
+from .utils import APIClient, get_file, files_in_folder_recursive, paginate_files
 
 # https://github.com/simonw/google-drive-to-sqlite/issues/2
 GOOGLE_CLIENT_ID = (
@@ -281,7 +281,7 @@ def files(database, auth, folder, q, full_text, json_, nl, stop_after):
     if stop_after:
         prev_all = all
 
-        def new_all():
+        def stop_after_all():
             i = 0
             for file in prev_all:
                 yield file
@@ -289,7 +289,18 @@ def files(database, auth, folder, q, full_text, json_, nl, stop_after):
                 if i >= stop_after:
                     break
 
-        all = new_all()
+        all = stop_after_all()
+
+    if folder:
+        # Fetch details of that folder first
+        folder_details = get_file(client, folder, fields=DEFAULT_FIELDS)
+        old_all = all
+
+        def folder_details_then_all():
+            yield folder_details
+            yield from old_all
+
+        all = folder_details_then_all()
 
     if nl:
         for file in all:
@@ -299,11 +310,49 @@ def files(database, auth, folder, q, full_text, json_, nl, stop_after):
         for line in stream_indented_json(all):
             click.echo(line)
         return
+
     db = sqlite_utils.Database(database)
+    save_files_and_folders(db, all)
+
+
+def save_files_and_folders(db, all):
+    # Ensure tables with foreign keys exist
+    with db.conn:
+        for table in ("drive_folders", "drive_files"):
+            if not db[table].exists():
+                db[table].create(
+                    {"id": str, "_parent": str},
+                    pk="id",
+                )
+                # Gotta add foreign key after table is created, to avoid
+                # AlterError: No such column: drive_folders.id
+                db[table].add_foreign_key("_parent", "drive_folders", "id")
     # Commit every 100 records
     for chunk in chunks(all, 100):
+        # Add `_parent` columns
+        files = []
+        folders = []
+        for file in chunk:
+            file["_parent"] = file["parents"][0] if file.get("parents") else None
+            if file.get("mimeType") == "application/vnd.google-apps.folder":
+                folders.append(file)
+            else:
+                files.append(file)
         with db.conn:
-            db["files"].insert_all(chunk, pk="id", replace=True)
+            db["drive_folders"].insert_all(
+                folders,
+                pk="id",
+                replace=True,
+                alter=True,
+                foreign_keys=(("_parent", "drive_folders", "id"),),
+            )
+            db["drive_files"].insert_all(
+                files,
+                pk="id",
+                replace=True,
+                alter=True,
+                foreign_keys=(("_parent", "drive_folders", "id"),),
+            )
 
 
 def load_tokens(auth):

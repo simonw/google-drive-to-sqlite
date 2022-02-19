@@ -7,6 +7,17 @@ class FilesError(Exception):
     pass
 
 
+def get_file(client, file_id, fields=None):
+    file_url = "https://www.googleapis.com/drive/v3/files/{}".format(file_id)
+    params = {}
+    if fields is not None:
+        params["fields"] = ",".join(fields)
+    return client.get(
+        file_url,
+        params=params,
+    ).json()
+
+
 def paginate_files(client, *, corpora=None, q=None, fields=None):
     pageToken = None
     files_url = "https://www.googleapis.com/drive/v3/files"
