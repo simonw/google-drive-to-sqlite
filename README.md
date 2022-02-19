@@ -120,7 +120,7 @@ Use `--folder ID` to retrieve everything in a specified folder and its sub-folde
 
 Use `--q QUERY` to use a [custom search query](https://developers.google.com/drive/api/v3/reference/query-ref):
 
-    google-drive-to-sqlite files files.db -q 'starred = true'
+    google-drive-to-sqlite files files.db -q "viewedByMeTime > '2022-01-01'"
 
 The following shortcut options help build queries:
 
