@@ -39,6 +39,8 @@ You can explore the resulting database using [Datasette](https://datasette.io/):
 ## Authentication
 
 > :warning: **This application has not yet been verified by Google** - you may find you are unable to authenticate until that verification is complete. [#10](https://github.com/simonw/google-drive-to-sqlite/issues/10)
+>
+> You can work around this issue by [creating your own OAuth client ID key](https://til.simonwillison.net/googlecloud/google-oauth-cli-application) and passing it to the `auth` command using `--google-client-id` and `--google-client-secret`.
 
 First, authenticate with Google Drive using the `auth` command:
 
