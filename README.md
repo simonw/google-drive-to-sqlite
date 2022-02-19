@@ -17,7 +17,24 @@ This lets you use SQL to analyze your Google Drive contents, using [Datasette](h
 
 Install this tool using `pip`:
 
-    $ pip install google-drive-to-sqlite
+    pip install google-drive-to-sqlite
+
+## Quickstart
+
+Authenticate with Google Drive by running:
+
+    google-drive-to-sqlite auth
+
+Now create a SQLite database with metadata about all of the files you have starred using:
+
+    google-drive-to-sqlite files starred.db --starred
+
+You can explore the resulting database using [Datasette](https://datasette.io/):
+
+    $ pip install datasette
+    $ datasette starred.db
+    INFO:     Started server process [24661]
+    INFO:     Uvicorn running on http://127.0.0.1:8001
 
 ## Authentication
 
@@ -25,7 +42,7 @@ Install this tool using `pip`:
 
 First, authenticate with Google Drive using the `auth` command:
 
-    % google-drive-to-sqlite auth
+    $ google-drive-to-sqlite auth
     Visit the following URL to authenticate with Google Drive
 
     https://accounts.google.com/o/oauth2/v2/auth?...
@@ -227,7 +244,7 @@ The `get` command makes authenticated requests to the specified URL, using crede
 
 For example:
 
-    % google-drive-to-sqlite get 'https://www.googleapis.com/drive/v3/about?fields=*'
+    $ google-drive-to-sqlite get 'https://www.googleapis.com/drive/v3/about?fields=*'
     {
         "kind": "drive#about",
         "user": {
@@ -237,7 +254,7 @@ For example:
 
 If the resource you are fetching supports pagination you can use `--paginate key` to paginate through all of the rows in a specified key. For example, the following API has a `nextPageToken` key and a `files` list, suggesting it supports pagination:
 
-    % google-drive-to-sqlite get https://www.googleapis.com/drive/v3/files
+    $ google-drive-to-sqlite get https://www.googleapis.com/drive/v3/files
     {
         "kind": "drive#fileList",
         "nextPageToken": "~!!~AI9...wogHHYlc=",
@@ -252,7 +269,7 @@ If the resource you are fetching supports pagination you can use `--paginate key
 
 To paginate through everything in the `files` list you would use `--paginate files` like this:
 
-    % google-drive-to-sqlite get https://www.googleapis.com/drive/v3/files --paginate files
+    $ google-drive-to-sqlite get https://www.googleapis.com/drive/v3/files --paginate files
     [
       {
         "kind": "drive#file",
@@ -264,7 +281,7 @@ To paginate through everything in the `files` list you would use `--paginate fil
 
 Add `--nl` to stream paginated data as newline-delimited JSON:
 
-    % google-drive-to-sqlite get https://www.googleapis.com/drive/v3/files --paginate files --nl
+    $ google-drive-to-sqlite get https://www.googleapis.com/drive/v3/files --paginate files --nl
     {"kind": "drive#file", "id": "1YEsITp_X8PtDUJWHGM0osT-TXAU1nr0e7RSWRM2Jpyg", "name": "Title of a spreadsheet", "mimeType": "application/vnd.google-apps.spreadsheet"}
     {"kind": "drive#file", "id": "1E6Zg2X2bjjtPzVfX8YqdXZDCoB3AVA7i", "name": "Subfolder", "mimeType": "application/vnd.google-apps.folder"}
 
