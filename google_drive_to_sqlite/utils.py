@@ -66,6 +66,7 @@ class APIClient:
                 "client_id": self.client_id,
                 "client_secret": self.client_secret,
             },
+            timeout=self.timeout,
         ).json()
         if "error" in data:
             raise self.Error(str(data))
