@@ -437,7 +437,19 @@ def load_tokens(auth):
     help="Hide progress bar and filename",
 )
 def download(file_ids, auth, output, silent):
-    "Download one or more file IDs to disk"
+    """
+    Download one or more files to disk, based on their file IDs.
+
+    The file content will be saved to a file with the name:
+
+        FILE_ID.ext
+
+    Where the extension is automatically picked based on the type of file.
+
+    If you are downloading a single file you can specify a filename with -o:
+
+        google-drive-to-sqlite download MY_FILE_ID -o myfile.txt
+    """
     if output:
         if len(file_ids) != 1:
             raise click.ClickException("--output option only works with a single file")
