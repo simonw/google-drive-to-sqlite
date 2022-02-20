@@ -5,6 +5,7 @@ import json
 import pathlib
 import pytest
 import re
+import stat
 import sqlite_utils
 
 TOKEN_REQUEST_CONTENT = (
@@ -46,6 +47,9 @@ def test_auth(httpx_mock, response, expected_error):
             assert result.exit_code == 0
             auth = json.load(open("auth.json"))
             assert auth == {"google-drive-to-sqlite": {"refresh_token": "rtoken"}}
+            # Should be chmod 600
+            st_mode = pathlib.Path("auth.json").stat().st_mode
+            assert stat.filemode(st_mode) == "-rw-------"
 
 
 @pytest.mark.parametrize(

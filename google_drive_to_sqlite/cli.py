@@ -158,7 +158,10 @@ def auth(auth, google_client_id, google_client_secret, scope):
     if scope != DEFAULT_SCOPE:
         info["scope"] = scope
     auth_data["google-drive-to-sqlite"] = info
-    open(auth, "w").write(json.dumps(auth_data, indent=4))
+    with open(auth, "w") as fp:
+        fp.write(json.dumps(auth_data, indent=4))
+    # chmod 600 to avoid other users on the shared machine reading it
+    pathlib.Path(auth).chmod(0o600)
 
 
 @cli.command()
