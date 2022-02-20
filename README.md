@@ -7,6 +7,8 @@
 
 Create a SQLite database containing metadata from [Google Drive](https://www.google.com/drive)
 
+For background on this project, see [Google Drive to SQLite](https://simonwillison.net/2022/Feb/20/google-drive-to-sqlite/) on my blog.
+
 If you use Google Drive, and especially if you have shared drives with other people there's a good chance you have hundreds or even thousands of files that you may not be fully aware of.
 
 This tool can download metadata about those files - their names, sizes, folders, content types, permissions, creation dates and more - and store them in a SQLite database.
