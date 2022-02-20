@@ -24,6 +24,20 @@ GOOGLE_CLIENT_ID = (
 GOOGLE_CLIENT_SECRET = "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"
 DEFAULT_SCOPE = "https://www.googleapis.com/auth/drive.readonly"
 
+FORMAT_SHORTCUTS = {
+    "html": "text/html",
+    "text": "text/plain",
+    "rtf": "application/rtf",
+    "pdf": "application/pdf",
+    "word": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "zip": "application/zip",
+    "epub": "application/epub+zip",
+    "excel": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "csv": "text/csv",
+    "tsv": "text/tab-separated-values",
+    "powerpoint": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+}
+
 
 def start_auth_url(google_client_id, scope):
     return "https://accounts.google.com/o/oauth2/v2/auth?" + urllib.parse.urlencode(
@@ -192,9 +206,9 @@ def get(url, auth, paginate, nl, stop_after, verbose):
     if not paginate:
         response = client.get(url)
         if verbose:
-            click.echo("{}, headers: {}".format(
-                response.status_code, repr(response.headers)
-            ))
+            click.echo(
+                "{}, headers: {}".format(response.status_code, repr(response.headers))
+            )
         if response.status_code != 200:
             raise click.ClickException(
                 "{}: {}\n\n{}".format(response.url, response.status_code, response.text)
@@ -463,39 +477,113 @@ def download(file_ids, auth, output, silent):
         with client.stream(
             "GET",
             "https://www.googleapis.com/drive/v3/files/{}?alt=media".format(file_id),
-        ) as r:
-            fp = None
-            if output:
-                filename = pathlib.Path(output).name
-                if output == "-":
-                    fp = sys.stdout.buffer
-                    silent = True
-                else:
-                    fp = open(output, "wb")
-            else:
-                # Use file ID + extension
-                filename = "{}.{}".format(
-                    file_id, r.headers.get("content-type", "/bin").split("/")[-1]
-                )
-                fp = open(filename, "wb")
-            length = int(r.headers.get("content-length", "0"))
-            if not silent:
-                click.echo(
-                    "Writing {}to {}".format(
-                        "{:,} bytes ".format(length) if length else "", filename
-                    ),
-                    err=True,
-                )
-            if length and not silent:
-                with click.progressbar(
-                    length=int(r.headers["content-length"]), label="Downloading"
-                ) as bar:
-                    for data in r.iter_bytes():
-                        fp.write(data)
-                        bar.update(len(data))
-            else:
-                for data in r.iter_bytes():
-                    fp.write(data)
+        ) as response:
+            streaming_download(response, file_id, output, silent)
+
+
+@cli.command()
+@click.argument("format")
+@click.argument("file_ids", nargs=-1, required=True)
+@click.option(
+    "-a",
+    "--auth",
+    type=click.Path(file_okay=True, dir_okay=False, allow_dash=True),
+    default="auth.json",
+    help="Path to auth.json token file",
+)
+@click.option(
+    "-o",
+    "--output",
+    type=click.Path(file_okay=True, dir_okay=False, allow_dash=True, writable=True),
+    help="File to write to, or - for standard output",
+)
+@click.option(
+    "-s",
+    "--silent",
+    is_flag=True,
+    help="Hide progress bar and filename",
+)
+def export(format, file_ids, auth, output, silent):
+    """
+    Export one or more files to the specified format.
+
+    Usage:
+
+        google-drive-to-sqlite export pdf FILE_ID_1 FILE_ID_2
+
+    The file content will be saved to a file with the name:
+
+        FILE_ID-export.ext
+
+    Where the extension is based on the format you specified.
+
+    Available export formats can be seen here:
+    https://developers.google.com/drive/api/v3/ref-export-formats
+
+    Or you can use one of the following shortcuts:
+
+    \b
+    - Google Docs: html, text, rtf, pdf, word, zip, epub
+    - Google Sheets: excel, pdf, csv, tsv, zip
+    - Presentations: powerpoint, pdf, text
+
+    "zip" returns a zip file of HTML.
+
+    If you are exporting a single file you can specify a filename with -o:
+
+        google-drive-to-sqlite export zip MY_FILE_ID -o myfile.zip
+    """
+    format = FORMAT_SHORTCUTS.get(format, format)
+    if output:
+        if len(file_ids) != 1:
+            raise click.ClickException("--output option only works with a single file")
+    tokens = load_tokens(auth)
+    client = APIClient(**tokens)
+    for file_id in file_ids:
+        with client.stream(
+            "GET",
+            "https://www.googleapis.com/drive/v3/files/{}/export".format(file_id),
+            params={"mimeType": format},
+        ) as response:
+            filestem = "{}-export".format(file_id)
+            streaming_download(response, filestem, output, silent)
+
+
+def streaming_download(response, filestem, output, silent):
+    if response.status_code != 200:
+        raise click.ClickException(response.read().decode("utf-8"))
+    fp = None
+    if output:
+        filename = pathlib.Path(output).name
+        if output == "-":
+            fp = sys.stdout.buffer
+            silent = True
+        else:
+            fp = open(output, "wb")
+    else:
+        # Use file ID + extension
+        filename = "{}.{}".format(
+            filestem, response.headers.get("content-type", "/bin").split("/")[-1]
+        )
+        fp = open(filename, "wb")
+    length = int(response.headers.get("content-length", "0"))
+    if not silent:
+        click.echo(
+            "Writing {}to {}".format(
+                "{:,} bytes ".format(length) if length else "", filename
+            ),
+            err=True,
+        )
+    if length and not silent:
+        with click.progressbar(
+            length=int(response.headers["content-length"]), label="Downloading"
+        ) as bar:
+            for data in response.iter_bytes():
+                fp.write(data)
+                bar.update(len(data))
+    else:
+        for data in response.iter_bytes():
+            fp.write(data)
 
 
 def stream_indented_json(iterator, indent=2):

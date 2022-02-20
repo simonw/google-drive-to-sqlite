@@ -135,10 +135,11 @@ class APIClient:
         return response
 
     @contextmanager
-    def stream(self, method, url):
+    def stream(self, method, url, params=None):
         with httpx.stream(
             method,
             url,
+            params=params,
             headers={"Authorization": "Bearer {}".format(self.get_access_token())},
         ) as stream:
             yield stream

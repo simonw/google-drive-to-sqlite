@@ -431,6 +431,37 @@ def test_download_output_path(httpx_mock):
         assert open("out.txt").read() == "this is text"
 
 
+def test_export_two_files(httpx_mock):
+    httpx_mock.add_response(
+        method="POST",
+        json={"access_token": "atoken"},
+    )
+    httpx_mock.add_response(
+        content="this is pdf",
+        headers={"content-type": "application/pdf"},
+    )
+    httpx_mock.add_response(
+        content="this is also pdf",
+        headers={"content-type": "application/pdf"},
+    )
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        open("auth.json", "w").write(json.dumps(AUTH_JSON))
+        result = runner.invoke(cli, ["export", "pdf", "file1", "file2"])
+        assert result.exit_code == 0
+        assert open("file1-export.pdf").read() == "this is pdf"
+        assert open("file2-export.pdf").read() == "this is also pdf"
+    _, file1_request, file2_request = httpx_mock.get_requests()
+    assert (
+        file1_request.url
+        == "https://www.googleapis.com/drive/v3/files/file1/export?mimeType=application%2Fpdf"
+    )
+    assert (
+        file2_request.url
+        == "https://www.googleapis.com/drive/v3/files/file2/export?mimeType=application%2Fpdf"
+    )
+
+
 def test_refresh_access_token_once_if_it_expires(httpx_mock):
     httpx_mock.add_response(
         method="POST",

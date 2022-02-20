@@ -255,6 +255,96 @@ Options:
 ```
 <!-- [[[end]]] -->
 
+## google-drive-to-sqlite export FORMAT FILE_ID
+
+The `export` command can be used to export Google Docs documents, spreadsheets and presentations in a number of different formats.
+
+You'll need one or more document IDs, which look something like `10BOHGDUYa7lBjUSo26YFCHTpgEmtXabdVFaopCTh1vU`. You can find these by looking at the URL of your document on the Google Docs site.
+
+To export that document as PDF, run this:
+
+    google-drive-to-sqlite export pdf 10BOHGDUYa7lBjUSo26YFCHTpgEmtXabdVFaopCTh1vU
+
+The file will be exported as:
+
+    10BOHGDUYa7lBjUSo26YFCHTpgEmtXabdVFaopCTh1vU-export.pdf
+
+You can pass multiple file IDs to the command at once.
+
+For the `FORMAT` option you can use any of the mime type options listed [on this page](https://developers.google.com/drive/api/v3/ref-export-formats) - for example, to export as an Open Office document you could use:
+
+    google-drive-to-sqlite export \
+     application/vnd.oasis.opendocument.text \
+     10BOHGDUYa7lBjUSo26YFCHTpgEmtXabdVFaopCTh1vU
+
+For convenience the following shortcuts for common file formats are provided:
+
+- Google Docs: `html`, `text`, `rtf`, `pdf`, `word`, `zip`, `epub`
+- Google Sheets: `excel`, `pdf`, `csv`, `tsv`, `zip`
+- Presentations: `powerpoint`, `pdf`, `text`
+
+The `zip` option returns a zip file of HTML. `text` returns plain text. The others should be self-evident.
+
+To hide the filename output, use `-s` or `--silent`.
+
+If you are exporting a single file you can use the `-o` output to specify a filename and location:
+
+    google-drive-to-sqlite export pdf 10BOHGDUYa7lBjUSo26YFCHTpgEmtXabdVFaopCTh1vU \
+      -o my-document.pdf
+
+Use `-o -` to write the file contents to standard output:
+
+    google-drive-to-sqlite export pdf 10BOHGDUYa7lBjUSo26YFCHTpgEmtXabdVFaopCTh1vU \
+      -o - > my-document.pdf
+
+Full `--help`:
+
+<!-- [[[cog
+result = runner.invoke(cli.cli, ["export", "--help"])
+help = result.output.replace("Usage: cli", "Usage: google-drive-to-sqlite")
+cog.out(
+    "```\n{}\n```\n".format(help)
+)
+]]] -->
+```
+Usage: google-drive-to-sqlite export [OPTIONS] FORMAT FILE_IDS...
+
+  Export one or more files to the specified format.
+
+  Usage:
+
+      google-drive-to-sqlite export pdf FILE_ID_1 FILE_ID_2
+
+  The file content will be saved to a file with the name:
+
+      FILE_ID-export.ext
+
+  Where the extension is based on the format you specified.
+
+  Available export formats can be seen here:
+  https://developers.google.com/drive/api/v3/ref-export-formats
+
+  Or you can use one of the following shortcuts:
+
+  - Google Docs: html, text, rtf, pdf, word, zip, epub
+  - Google Sheets: excel, pdf, csv, tsv, zip
+  - Presentations: powerpoint, pdf, text
+
+  "zip" returns a zip file of HTML.
+
+  If you are exporting a single file you can specify a filename with -o:
+
+      google-drive-to-sqlite export zip MY_FILE_ID -o myfile.zip
+
+Options:
+  -a, --auth FILE    Path to auth.json token file
+  -o, --output FILE  File to write to, or - for standard output
+  -s, --silent       Hide progress bar and filename
+  --help             Show this message and exit.
+
+```
+<!-- [[[end]]] -->
+
 ## google-drive-to-sqlite get URL
 
 The `get` command makes authenticated requests to the specified URL, using credentials derived from the `auth.json` file.
