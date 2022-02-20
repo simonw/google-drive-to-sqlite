@@ -429,6 +429,14 @@ CREATE TABLE [drive_files_owners] (
 ```
 <!-- [[[end]]] -->
 
+## Thumbnails
+
+You can construct a thumbnail image for a known file ID using the following URL:
+
+    https://drive.google.com/thumbnail?sz=w800-h800&id=FILE_ID
+
+Users who are signed into Google Drive and have permission to view a file will be redirected to a thumbnail version of that file. You can tweak the `w800` and `h800` parameters to request different thumbnail sizes.
+
 ## Privacy policy
 
 This tool requests access to your Google Drive account in order to retrieve metadata about your files there. It also offers a feature that can download the content of those files.
