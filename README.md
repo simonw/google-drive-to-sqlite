@@ -296,12 +296,12 @@ For the `FORMAT` option you can use any of the mime type options listed [on this
 
 For convenience the following shortcuts for common file formats are provided:
 
-- Google Docs: `html`, `text`, `rtf`, `pdf`, `doc`, `zip`, `epub`
+- Google Docs: `html`, `txt`, `rtf`, `pdf`, `doc`, `zip`, `epub`
 - Google Sheets: `xls`, `pdf`, `csv`, `tsv`, `zip`
-- Presentations: `ppt`, `pdf`, `text`
+- Presentations: `ppt`, `pdf`, `txt`
 - Drawings: `jpeg`, `png`, `svg`
 
-The `zip` option returns a zip file of HTML. `text` returns plain text. The others should be self-evident.
+The `zip` option returns a zip file of HTML. `txt` returns plain text. The others should be self-evident.
 
 To hide the filename output, use `-s` or `--silent`.
 
@@ -344,9 +344,9 @@ Usage: google-drive-to-sqlite export [OPTIONS] FORMAT FILE_IDS...
 
   Or you can use one of the following shortcuts:
 
-  - Google Docs: html, text, rtf, pdf, doc, zip, epub
+  - Google Docs: html, txt, rtf, pdf, doc, zip, epub
   - Google Sheets: xls, pdf, csv, tsv, zip
-  - Presentations: ppt, pdf, text
+  - Presentations: ppt, pdf, txt
   - Drawings: jpeg, png, svg
 
   "zip" returns a zip file of HTML.

@@ -26,7 +26,7 @@ DEFAULT_SCOPE = "https://www.googleapis.com/auth/drive.readonly"
 
 FORMAT_SHORTCUTS = {
     "html": "text/html",
-    "text": "text/plain",
+    "txt": "text/plain",
     "rtf": "application/rtf",
     "pdf": "application/pdf",
     "doc": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -575,9 +575,9 @@ def export(format, file_ids, auth, output, silent):
     Or you can use one of the following shortcuts:
 
     \b
-    - Google Docs: html, text, rtf, pdf, doc, zip, epub
+    - Google Docs: html, txt, rtf, pdf, doc, zip, epub
     - Google Sheets: xls, pdf, csv, tsv, zip
-    - Presentations: ppt, pdf, text
+    - Presentations: ppt, pdf, txt
     - Drawings: jpeg, png, svg
 
     "zip" returns a zip file of HTML.
