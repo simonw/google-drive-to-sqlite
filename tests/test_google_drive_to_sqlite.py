@@ -1,5 +1,6 @@
 from click.testing import CliRunner
 from google_drive_to_sqlite.cli import cli, DEFAULT_FIELDS
+import httpx
 import json
 import pathlib
 import pytest
@@ -742,3 +743,66 @@ def test_files_input_real_example(httpx_mock):
                 "user_id": "16974643384157631322",
             }
         ]
+
+
+@pytest.mark.parametrize(
+    "exception", (httpx.TransportError, httpx.RemoteProtocolError, httpx.ConnectError)
+)
+@pytest.mark.parametrize(
+    "num_exceptions,should_succeed",
+    (
+        (3, False),
+        (2, True),
+        (1, True),
+        (0, True),
+    ),
+)
+def test_files_retry_on_transport_error(
+    httpx_mock, mocker, num_exceptions, should_succeed, exception
+):
+    mocker.patch("google_drive_to_sqlite.utils.sleep")
+    about_data = {
+        "kind": "drive#about",
+        "user": {"kind": "drive#user", "displayName": "User"},
+    }
+    httpx_mock.add_response(
+        url="https://www.googleapis.com/oauth2/v4/token",
+        method="POST",
+        json={"access_token": "atoken"},
+    )
+    for _ in range(min(num_exceptions, 3)):
+        httpx_mock.add_exception(exception("Error"))
+
+    if should_succeed:
+        httpx_mock.add_response(
+            url="https://www.googleapis.com/drive/v3/about?fields=*",
+            method="GET",
+            json=about_data,
+        )
+
+    runner = CliRunner(mix_stderr=False)
+    with runner.isolated_filesystem():
+        open("auth.json", "w").write(json.dumps(AUTH_JSON))
+        result = runner.invoke(
+            cli, ["get", "https://www.googleapis.com/drive/v3/about?fields=*", "-v"]
+        )
+        if should_succeed:
+            assert result.exit_code == 0
+        else:
+            assert result.exit_code == 1
+        requests = httpx_mock.get_requests()
+        num_expected = num_exceptions + 1
+        if should_succeed:
+            num_expected += 1
+        assert len(requests) == num_expected
+
+    # Test log output for num_exceptions = 2
+    if num_exceptions == 2:
+        assert result.stderr == (
+            "POST https://www.googleapis.com/oauth2/v4/token\n"
+            "GET: https://www.googleapis.com/drive/v3/about?fields=*\n"
+            + "  Got {}, retrying\n".format(exception.__name__)
+            + "GET: https://www.googleapis.com/drive/v3/about?fields=*\n"
+            + "  Got {}, retrying\n".format(exception.__name__)
+            + "GET: https://www.googleapis.com/drive/v3/about?fields=*\n"
+        )

@@ -313,6 +313,7 @@ Options:
   --paginate TEXT       Paginate through all results in this key
   --nl                  Output paginated data as newline-delimited JSON
   --stop-after INTEGER  Stop paginating after X results
+  -v, --verbose         Send verbose output to stderr
   --help                Show this message and exit.
 
 ```

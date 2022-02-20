@@ -2,6 +2,7 @@ from contextlib import contextmanager
 import click
 import httpx
 import itertools
+from time import sleep
 
 
 class FilesError(Exception):
@@ -88,11 +89,35 @@ class APIClient:
         self.access_token = data["access_token"]
         return self.access_token
 
-    def get(self, url, params=None, headers=None, allow_token_refresh=True):
+    def get(
+        self,
+        url,
+        params=None,
+        headers=None,
+        allow_token_refresh=True,
+        transport_retries=2,
+    ):
         headers = headers or {}
         headers["Authorization"] = "Bearer {}".format(self.get_access_token())
-        self.log("GET: {} {}".format(url, params))
-        response = httpx.get(url, params=params, headers=headers, timeout=self.timeout)
+        self.log("GET: {} {}".format(url, params or "").strip())
+        try:
+            response = httpx.get(
+                url, params=params, headers=headers, timeout=self.timeout
+            )
+        except httpx.TransportError as ex:
+            if transport_retries:
+                sleep(2)
+                self.log("  Got {}, retrying".format(ex.__class__.__name__))
+                return self.get(
+                    url,
+                    params,
+                    headers,
+                    allow_token_refresh=allow_token_refresh,
+                    transport_retries=transport_retries - 1,
+                )
+            else:
+                raise
+
         if response.status_code == 401 and allow_token_refresh:
             # Try again after refreshing the token
             self.get_access_token(force_refresh=True)

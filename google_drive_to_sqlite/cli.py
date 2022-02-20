@@ -168,7 +168,13 @@ def revoke(auth):
     "--nl", is_flag=True, help="Output paginated data as newline-delimited JSON"
 )
 @click.option("--stop-after", type=int, help="Stop paginating after X results")
-def get(url, auth, paginate, nl, stop_after):
+@click.option(
+    "-v",
+    "--verbose",
+    is_flag=True,
+    help="Send verbose output to stderr",
+)
+def get(url, auth, paginate, nl, stop_after, verbose):
     "Make an authenticated HTTP GET to the specified URL"
     if not url.startswith("https://www.googleapis.com/"):
         if url.startswith("/"):
@@ -177,8 +183,11 @@ def get(url, auth, paginate, nl, stop_after):
             raise click.ClickException(
                 "url must start with / or https://www.googleapis.com/"
             )
-    tokens = load_tokens(auth)
-    client = APIClient(**tokens)
+
+    kwargs = load_tokens(auth)
+    if verbose:
+        kwargs["logger"] = lambda s: click.echo(s, err=True)
+    client = APIClient(**kwargs)
 
     if not paginate:
         response = client.get(url)
