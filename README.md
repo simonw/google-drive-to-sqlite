@@ -471,6 +471,7 @@ CREATE TABLE [drive_users] (
 CREATE TABLE [drive_folders] (
    [id] TEXT PRIMARY KEY,
    [_parent] TEXT,
+   [_owner] TEXT,
    [lastModifyingUser] TEXT,
    [kind] TEXT,
    [name] TEXT,
@@ -499,17 +500,13 @@ CREATE TABLE [drive_folders] (
    [isAppAuthorized] INTEGER,
    [linkShareMetadata] TEXT,
    FOREIGN KEY([_parent]) REFERENCES [drive_folders]([id]),
+   FOREIGN KEY([_owner]) REFERENCES [drive_users]([permissionId]),
    FOREIGN KEY([lastModifyingUser]) REFERENCES [drive_users]([permissionId])
-);
-CREATE TABLE [drive_folders_owners] (
-   [item_id] TEXT REFERENCES [drive_folders]([id]),
-   [user_id] TEXT REFERENCES [drive_users]([permissionId]),
-   PRIMARY KEY ([item_id],
-   [user_id])
 );
 CREATE TABLE [drive_files] (
    [id] TEXT PRIMARY KEY,
    [_parent] TEXT,
+   [_owner] TEXT,
    [lastModifyingUser] TEXT,
    [kind] TEXT,
    [name] TEXT,
@@ -537,13 +534,8 @@ CREATE TABLE [drive_files] (
    [isAppAuthorized] INTEGER,
    [linkShareMetadata] TEXT,
    FOREIGN KEY([_parent]) REFERENCES [drive_folders]([id]),
+   FOREIGN KEY([_owner]) REFERENCES [drive_users]([permissionId]),
    FOREIGN KEY([lastModifyingUser]) REFERENCES [drive_users]([permissionId])
-);
-CREATE TABLE [drive_files_owners] (
-   [item_id] TEXT REFERENCES [drive_files]([id]),
-   [user_id] TEXT REFERENCES [drive_users]([permissionId]),
-   PRIMARY KEY ([item_id],
-   [user_id])
 );
 ```
 <!-- [[[end]]] -->

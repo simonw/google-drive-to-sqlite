@@ -276,10 +276,10 @@ def test_files_basic(httpx_mock, opts, extra_qs, use_db):
         if use_db:
             rows = list(sqlite_utils.Database("test.db")["drive_files"].rows)
             assert rows == [
-                {"id": "1", "_parent": None, "lastModifyingUser": None},
-                {"id": "2", "_parent": None, "lastModifyingUser": None},
-                {"id": "3", "_parent": None, "lastModifyingUser": None},
-                {"id": "4", "_parent": None, "lastModifyingUser": None},
+                {"id": "1", "_parent": None, "_owner": None, "lastModifyingUser": None},
+                {"id": "2", "_parent": None, "_owner": None, "lastModifyingUser": None},
+                {"id": "3", "_parent": None, "_owner": None, "lastModifyingUser": None},
+                {"id": "4", "_parent": None, "_owner": None, "lastModifyingUser": None},
             ]
         else:
             results = json.loads(result.output)
@@ -300,8 +300,8 @@ def test_files_basic_stop_after_also_test_verbose(httpx_mock, verbosity_arg):
         open("auth.json", "w").write(json.dumps(AUTH_JSON))
         args = ["files", "--json", "--stop-after", "1", verbosity_arg]
         result = runner.invoke(cli, args)
-        assert result.stderr == (
-            "POST https://www.googleapis.com/oauth2/v4/token\n"
+        assert (
+            result.stderr == "POST https://www.googleapis.com/oauth2/v4/token\n"
             "GET: https://www.googleapis.com/drive/v3/files "
             "{'fields': 'nextPageToken, files(kind,id,name,mimeType,starred,trashed,"
             "explicitlyTrashed,parents,spaces,version,webViewLink,iconLink,hasThumbnail,"
@@ -559,13 +559,11 @@ def test_files_input(httpx_mock, opt, input):
             "drive_folders",
             "drive_files",
             "drive_users",
-            "drive_folders_owners",
-            "drive_files_owners",
         }
         rows = list(db["drive_files"].rows)
         assert rows == [
-            {"id": "one", "_parent": None, "lastModifyingUser": None},
-            {"id": "two", "_parent": None, "lastModifyingUser": None},
+            {"id": "one", "_parent": None, "_owner": None, "lastModifyingUser": None},
+            {"id": "two", "_parent": None, "_owner": None, "lastModifyingUser": None},
         ]
 
 
@@ -582,8 +580,6 @@ def test_files_input_real_example(httpx_mock):
             "drive_folders",
             "drive_files",
             "drive_users",
-            "drive_files_owners",
-            "drive_folders_owners",
         }
         schema = db.schema
         assert (
@@ -591,47 +587,42 @@ def test_files_input_real_example(httpx_mock):
             == "CREATE TABLE [drive_users] (\n   [permissionId] TEXT PRIMARY KEY\n,"
             " [kind] TEXT, [displayName] TEXT, [photoLink] TEXT, [me] INTEGER,"
             " [emailAddress] TEXT);\nCREATE TABLE [drive_folders] (\n   [id] TEXT"
-            " PRIMARY KEY,\n   [_parent] TEXT,\n   [lastModifyingUser] TEXT, [kind]"
-            " TEXT, [name] TEXT, [mimeType] TEXT, [starred] INTEGER, [trashed]"
-            " INTEGER, [explicitlyTrashed] INTEGER, [parents] TEXT, [spaces] TEXT,"
-            " [version] TEXT, [webViewLink] TEXT, [iconLink] TEXT, [hasThumbnail]"
-            " INTEGER, [thumbnailVersion] TEXT, [viewedByMe] INTEGER, [createdTime]"
-            " TEXT, [modifiedTime] TEXT, [modifiedByMe] INTEGER, [shared] INTEGER,"
-            " [ownedByMe] INTEGER, [viewersCanCopyContent] INTEGER,"
-            " [copyRequiresWriterPermission] INTEGER, [writersCanShare] INTEGER,"
-            " [folderColorRgb] TEXT, [quotaBytesUsed] TEXT, [isAppAuthorized]"
-            " INTEGER, [linkShareMetadata] TEXT,\n   FOREIGN KEY([_parent])"
-            " REFERENCES [drive_folders]([id]),\n   FOREIGN KEY([lastModifyingUser])"
-            " REFERENCES [drive_users]([permissionId])\n);\nCREATE TABLE"
-            " [drive_folders_owners] (\n   [item_id] TEXT REFERENCES"
-            " [drive_folders]([id]),\n   [user_id] TEXT REFERENCES"
-            " [drive_users]([permissionId]),\n   PRIMARY KEY ([item_id],"
-            " [user_id])\n);\nCREATE TABLE [drive_files] (\n   [id] TEXT PRIMARY"
-            " KEY,\n   [_parent] TEXT,\n   [lastModifyingUser] TEXT, [kind] TEXT,"
-            " [name] TEXT, [mimeType] TEXT, [starred] INTEGER, [trashed] INTEGER,"
-            " [explicitlyTrashed] INTEGER, [parents] TEXT, [spaces] TEXT, [version]"
-            " TEXT, [webViewLink] TEXT, [iconLink] TEXT, [hasThumbnail] INTEGER,"
-            " [thumbnailVersion] TEXT, [viewedByMe] INTEGER, [createdTime] TEXT,"
-            " [modifiedTime] TEXT, [modifiedByMe] INTEGER, [shared] INTEGER,"
-            " [ownedByMe] INTEGER, [viewersCanCopyContent] INTEGER,"
-            " [copyRequiresWriterPermission] INTEGER, [writersCanShare] INTEGER,"
+            " PRIMARY KEY,\n   [_parent] TEXT,\n   [_owner] TEXT,\n  "
+            " [lastModifyingUser] TEXT, [kind] TEXT, [name] TEXT, [mimeType] TEXT,"
+            " [starred] INTEGER, [trashed] INTEGER, [explicitlyTrashed] INTEGER,"
+            " [parents] TEXT, [spaces] TEXT, [version] TEXT, [webViewLink] TEXT,"
+            " [iconLink] TEXT, [hasThumbnail] INTEGER, [thumbnailVersion] TEXT,"
+            " [viewedByMe] INTEGER, [createdTime] TEXT, [modifiedTime] TEXT,"
+            " [modifiedByMe] INTEGER, [shared] INTEGER, [ownedByMe] INTEGER,"
+            " [viewersCanCopyContent] INTEGER, [copyRequiresWriterPermission]"
+            " INTEGER, [writersCanShare] INTEGER, [folderColorRgb] TEXT,"
             " [quotaBytesUsed] TEXT, [isAppAuthorized] INTEGER, [linkShareMetadata]"
             " TEXT,\n   FOREIGN KEY([_parent]) REFERENCES [drive_folders]([id]),\n  "
+            " FOREIGN KEY([_owner]) REFERENCES [drive_users]([permissionId]),\n  "
             " FOREIGN KEY([lastModifyingUser]) REFERENCES"
-            " [drive_users]([permissionId])\n);\nCREATE TABLE [drive_files_owners]"
-            " (\n   [item_id] TEXT REFERENCES [drive_files]([id]),\n   [user_id]"
-            " TEXT REFERENCES [drive_users]([permissionId]),\n   PRIMARY KEY"
-            " ([item_id], [user_id])\n);"
+            " [drive_users]([permissionId])\n);\nCREATE TABLE [drive_files] (\n  "
+            " [id] TEXT PRIMARY KEY,\n   [_parent] TEXT,\n   [_owner] TEXT,\n  "
+            " [lastModifyingUser] TEXT, [kind] TEXT, [name] TEXT, [mimeType] TEXT,"
+            " [starred] INTEGER, [trashed] INTEGER, [explicitlyTrashed] INTEGER,"
+            " [parents] TEXT, [spaces] TEXT, [version] TEXT, [webViewLink] TEXT,"
+            " [iconLink] TEXT, [hasThumbnail] INTEGER, [thumbnailVersion] TEXT,"
+            " [viewedByMe] INTEGER, [createdTime] TEXT, [modifiedTime] TEXT,"
+            " [modifiedByMe] INTEGER, [shared] INTEGER, [ownedByMe] INTEGER,"
+            " [viewersCanCopyContent] INTEGER, [copyRequiresWriterPermission]"
+            " INTEGER, [writersCanShare] INTEGER, [quotaBytesUsed] TEXT,"
+            " [isAppAuthorized] INTEGER, [linkShareMetadata] TEXT,\n   FOREIGN"
+            " KEY([_parent]) REFERENCES [drive_folders]([id]),\n   FOREIGN"
+            " KEY([_owner]) REFERENCES [drive_users]([permissionId]),\n   FOREIGN"
+            " KEY([lastModifyingUser]) REFERENCES [drive_users]([permissionId])\n);"
         )
         files_rows = list(db["drive_files"].rows)
         folders_rows = list(db["drive_folders"].rows)
         users_rows = list(db["drive_users"].rows)
-        drive_folders_owners_rows = list(db["drive_folders_owners"].rows)
-        drive_files_owners_rows = list(db["drive_files_owners"].rows)
         assert files_rows == [
             {
                 "id": "1Xdqfeoi8B8YJJR0y-_oQlHYpjHHzD5a-",
                 "_parent": "113Wb_KLL1dtgx3vpeRfSTOYIUDf3QnnN",
+                "_owner": "16974643384157631322",
                 "lastModifyingUser": None,
                 "kind": "drive#file",
                 "name": "sample.csv",
@@ -643,9 +634,7 @@ def test_files_input_real_example(httpx_mock):
                 "spaces": '["drive"]',
                 "version": "2",
                 "webViewLink": "https://drive.google.com/file/d/1Xdqfeoi8B8YJJR0y-_oQlHYpjHHzD5a-/view?usp=drivesdk",
-                "iconLink": (
-                    "https://drive-thirdparty.googleusercontent.com/16/type/text/csv"
-                ),
+                "iconLink": "https://drive-thirdparty.googleusercontent.com/16/type/text/csv",
                 "hasThumbnail": 0,
                 "thumbnailVersion": "0",
                 "viewedByMe": 1,
@@ -659,15 +648,14 @@ def test_files_input_real_example(httpx_mock):
                 "writersCanShare": 1,
                 "quotaBytesUsed": "1070506",
                 "isAppAuthorized": 0,
-                "linkShareMetadata": (
-                    '{"securityUpdateEligible": false, "securityUpdateEnabled": true}'
-                ),
+                "linkShareMetadata": '{"securityUpdateEligible": false, "securityUpdateEnabled": true}',
             }
         ]
         assert folders_rows == [
             {
                 "id": "1dbccBzomcvEUGdnoj8-9QG1yHxS0R-_j",
                 "_parent": "0AK1CICIR8ECDUk9PVA",
+                "_owner": "16974643384157631322",
                 "lastModifyingUser": "16974643384157631322",
                 "kind": "drive#file",
                 "name": "test-folder",
@@ -694,13 +682,12 @@ def test_files_input_real_example(httpx_mock):
                 "folderColorRgb": "#8f8f8f",
                 "quotaBytesUsed": "0",
                 "isAppAuthorized": 0,
-                "linkShareMetadata": (
-                    '{"securityUpdateEligible": false, "securityUpdateEnabled": true}'
-                ),
+                "linkShareMetadata": '{"securityUpdateEligible": false, "securityUpdateEnabled": true}',
             },
             {
                 "id": "1FYLDMMXi1-gGjxg8dLmvbiixDuR8-FZ3",
                 "_parent": "1dbccBzomcvEUGdnoj8-9QG1yHxS0R-_j",
+                "_owner": "16974643384157631322",
                 "lastModifyingUser": "16974643384157631322",
                 "kind": "drive#file",
                 "name": "two",
@@ -727,13 +714,12 @@ def test_files_input_real_example(httpx_mock):
                 "folderColorRgb": "#8f8f8f",
                 "quotaBytesUsed": "0",
                 "isAppAuthorized": 0,
-                "linkShareMetadata": (
-                    '{"securityUpdateEligible": false, "securityUpdateEnabled": true}'
-                ),
+                "linkShareMetadata": '{"securityUpdateEligible": false, "securityUpdateEnabled": true}',
             },
             {
                 "id": "113Wb_KLL1dtgx3vpeRfSTOYIUDf3QnnN",
                 "_parent": "1dbccBzomcvEUGdnoj8-9QG1yHxS0R-_j",
+                "_owner": "16974643384157631322",
                 "lastModifyingUser": "16974643384157631322",
                 "kind": "drive#file",
                 "name": "one",
@@ -760,9 +746,7 @@ def test_files_input_real_example(httpx_mock):
                 "folderColorRgb": "#8f8f8f",
                 "quotaBytesUsed": "0",
                 "isAppAuthorized": 0,
-                "linkShareMetadata": (
-                    '{"securityUpdateEligible": false, "securityUpdateEnabled": true}'
-                ),
+                "linkShareMetadata": '{"securityUpdateEligible": false, "securityUpdateEnabled": true}',
             },
         ]
         assert users_rows == [
@@ -773,26 +757,6 @@ def test_files_input_real_example(httpx_mock):
                 "photoLink": "https://lh3.googleusercontent.com/a-/AOh14Gg9Loyxove5ocfBp0mg0u2afcTpM1no8QJnwbWnxw=s64",
                 "me": 1,
                 "emailAddress": "...@gmail.com",
-            }
-        ]
-        assert drive_folders_owners_rows == [
-            {
-                "item_id": "1dbccBzomcvEUGdnoj8-9QG1yHxS0R-_j",
-                "user_id": "16974643384157631322",
-            },
-            {
-                "item_id": "1FYLDMMXi1-gGjxg8dLmvbiixDuR8-FZ3",
-                "user_id": "16974643384157631322",
-            },
-            {
-                "item_id": "113Wb_KLL1dtgx3vpeRfSTOYIUDf3QnnN",
-                "user_id": "16974643384157631322",
-            },
-        ]
-        assert drive_files_owners_rows == [
-            {
-                "item_id": "1Xdqfeoi8B8YJJR0y-_oQlHYpjHHzD5a-",
-                "user_id": "16974643384157631322",
             }
         ]
 

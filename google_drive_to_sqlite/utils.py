@@ -153,28 +153,22 @@ def save_files_and_folders(db, all):
         for table in ("drive_folders", "drive_files"):
             if not db[table].exists():
                 db[table].create(
-                    {"id": str, "_parent": str, "lastModifyingUser": str},
+                    {
+                        "id": str,
+                        "_parent": str,
+                        "_owner": str,
+                        "lastModifyingUser": str,
+                    },
                     pk="id",
                 )
                 # Gotta add foreign key after table is created, to avoid
                 # AlterError: No such column: drive_folders.id
-                db[table].add_foreign_key("_parent", "drive_folders", "id")
-                db[table].add_foreign_key(
-                    "lastModifyingUser", "drive_users", "permissionId"
-                )
-            # Create owners table too
-            owners_table = "{}_owners".format(table)
-            if not db[owners_table].exists():
-                db[owners_table].create(
-                    {
-                        "item_id": str,
-                        "user_id": str,
-                    },
-                    foreign_keys=(
-                        ("user_id", "drive_users", "permissionId"),
-                        ("item_id", table, "id"),
-                    ),
-                    pk=("item_id", "user_id"),
+                db.add_foreign_keys(
+                    (
+                        (table, "_parent", "drive_folders", "id"),
+                        (table, "_owner", "drive_users", "permissionId"),
+                        (table, "lastModifyingUser", "drive_users", "permissionId"),
+                    )
                 )
 
     # Commit every 100 records
@@ -200,37 +194,31 @@ def save_files_and_folders(db, all):
                 last_modifying_user = file.get("lastModifyingUser")
                 # This can be {'displayName': '', 'kind': 'drive#user', 'me': False}
                 if last_modifying_user and last_modifying_user.get("permissionId"):
-                    file["lastModifyingUser"] = (
-                        db["drive_users"]
-                        .insert(
+                    user_id = last_modifying_user["permissionId"]
+                    if user_id not in users_seen:
+                        db["drive_users"].insert(
                             last_modifying_user,
                             replace=True,
                             pk="permissionId",
                             alter=True,
                         )
-                        .last_pk
-                    )
+                        users_seen.add(user_id)
+                    file["lastModifyingUser"] = user_id
                 else:
                     file["lastModifyingUser"] = None
                 owners = file.pop("owners", None)
-                if owners:
-                    # Insert any missing ones
-                    missing_users = [
-                        user
-                        for user in owners
-                        if user["permissionId"] not in users_seen
-                    ]
-                    if missing_users:
-                        db["drive_users"].insert_all(
-                            missing_users,
+                file["_owner"] = None
+                if owners and owners[0].get("permissionId"):
+                    owner_user_id = owners[0]["permissionId"]
+                    if owner_user_id not in users_seen:
+                        db["drive_users"].insert(
+                            owners[0],
                             replace=True,
+                            pk="permissionId",
                             alter=True,
                         )
-                        users_seen.update(u["permissionId"] for u in missing_users)
-                    for owner in owners:
-                        to_insert_list.append(
-                            {"item_id": file["id"], "user_id": owner["permissionId"]}
-                        )
+                        users_seen.add(owner_user_id)
+                    file["_owner"] = owner_user_id
 
         with db.conn:
             db["drive_folders"].insert_all(
