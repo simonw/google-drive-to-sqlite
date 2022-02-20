@@ -617,7 +617,6 @@ def streaming_download(response, filestem, output, silent):
         else:
             fp = open(output, "wb")
     else:
-        # Use file ID + extension
         ext = response.headers.get("content-type", "/bin")
         if ext in FILE_EXTENSIONS:
             ext = FILE_EXTENSIONS[ext]
