@@ -36,6 +36,9 @@ FORMAT_SHORTCUTS = {
     "csv": "text/csv",
     "tsv": "text/tab-separated-values",
     "powerpoint": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "jpeg": "image/jpeg",
+    "png": "image/png",
+    "svg": "image/svg+xml",
 }
 
 
@@ -526,6 +529,7 @@ def export(format, file_ids, auth, output, silent):
     - Google Docs: html, text, rtf, pdf, word, zip, epub
     - Google Sheets: excel, pdf, csv, tsv, zip
     - Presentations: powerpoint, pdf, text
+    - Drawings: jpeg, png, svg
 
     "zip" returns a zip file of HTML.
 
