@@ -197,17 +197,21 @@ def save_files_and_folders(db, all):
             (drive_files_owners_to_insert, files),
         ):
             for file in sequence:
-                if file.get("lastModifyingUser"):
+                last_modifying_user = file.get("lastModifyingUser")
+                # This can be {'displayName': '', 'kind': 'drive#user', 'me': False}
+                if last_modifying_user and last_modifying_user.get("permissionId"):
                     file["lastModifyingUser"] = (
                         db["drive_users"]
                         .insert(
-                            file["lastModifyingUser"],
+                            last_modifying_user,
                             replace=True,
                             pk="permissionId",
                             alter=True,
                         )
                         .last_pk
                     )
+                else:
+                    file["lastModifyingUser"] = None
                 owners = file.pop("owners", None)
                 if owners:
                     # Insert any missing ones

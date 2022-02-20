@@ -194,14 +194,7 @@
         "emailAddress": "...@gmail.com"
       }
     ],
-    "lastModifyingUser": {
-      "kind": "drive#user",
-      "displayName": "Simon Willison",
-      "photoLink": "https://lh3.googleusercontent.com/a-/AOh14Gg9Loyxove5ocfBp0mg0u2afcTpM1no8QJnwbWnxw=s64",
-      "me": true,
-      "permissionId": "16974643384157631322",
-      "emailAddress": "...@gmail.com"
-    },
+    "lastModifyingUser": {"displayName": "", "kind": "drive#user", "me": false},
     "shared": false,
     "ownedByMe": true,
     "viewersCanCopyContent": true,

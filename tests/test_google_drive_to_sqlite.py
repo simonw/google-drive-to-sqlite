@@ -632,7 +632,7 @@ def test_files_input_real_example(httpx_mock):
             {
                 "id": "1Xdqfeoi8B8YJJR0y-_oQlHYpjHHzD5a-",
                 "_parent": "113Wb_KLL1dtgx3vpeRfSTOYIUDf3QnnN",
-                "lastModifyingUser": "16974643384157631322",
+                "lastModifyingUser": None,
                 "kind": "drive#file",
                 "name": "sample.csv",
                 "mimeType": "text/csv",
