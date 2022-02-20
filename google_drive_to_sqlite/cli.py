@@ -191,6 +191,10 @@ def get(url, auth, paginate, nl, stop_after, verbose):
 
     if not paginate:
         response = client.get(url)
+        if verbose:
+            click.echo("{}, headers: {}".format(
+                response.status_code, repr(response.headers)
+            ))
         if response.status_code != 200:
             raise click.ClickException(
                 "{}: {}\n\n{}".format(response.url, response.status_code, response.text)
