@@ -29,16 +29,27 @@ FORMAT_SHORTCUTS = {
     "text": "text/plain",
     "rtf": "application/rtf",
     "pdf": "application/pdf",
-    "word": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "doc": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     "zip": "application/zip",
     "epub": "application/epub+zip",
-    "excel": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "xls": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     "csv": "text/csv",
     "tsv": "text/tab-separated-values",
-    "powerpoint": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "ppt": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
     "jpeg": "image/jpeg",
     "png": "image/png",
     "svg": "image/svg+xml",
+}
+# .ext defaults to the bit after the / - e.g. "application/pdf" becomes "pdf",
+# unless there is an explicit override here:
+FILE_EXTENSIONS = {
+    "image/svg+xml": "svg",
+    "application/epub+zip": "epub",
+    "text/plain": "txt",
+    "text/tab-separated-values": "tsv",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "doc",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xls",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation": "ppt",
 }
 
 
@@ -526,9 +537,9 @@ def export(format, file_ids, auth, output, silent):
     Or you can use one of the following shortcuts:
 
     \b
-    - Google Docs: html, text, rtf, pdf, word, zip, epub
-    - Google Sheets: excel, pdf, csv, tsv, zip
-    - Presentations: powerpoint, pdf, text
+    - Google Docs: html, text, rtf, pdf, doc, zip, epub
+    - Google Sheets: xls, pdf, csv, tsv, zip
+    - Presentations: ppt, pdf, text
     - Drawings: jpeg, png, svg
 
     "zip" returns a zip file of HTML.
@@ -566,9 +577,12 @@ def streaming_download(response, filestem, output, silent):
             fp = open(output, "wb")
     else:
         # Use file ID + extension
-        filename = "{}.{}".format(
-            filestem, response.headers.get("content-type", "/bin").split("/")[-1]
-        )
+        ext = response.headers.get("content-type", "/bin")
+        if ext in FILE_EXTENSIONS:
+            ext = FILE_EXTENSIONS[ext]
+        else:
+            ext = ext.split("/")[-1]
+        filename = "{}.{}".format(filestem, ext)
         fp = open(filename, "wb")
     length = int(response.headers.get("content-length", "0"))
     if not silent:

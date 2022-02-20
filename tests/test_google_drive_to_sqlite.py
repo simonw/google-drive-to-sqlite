@@ -379,7 +379,7 @@ def test_download_two_files(httpx_mock):
         result = runner.invoke(cli, ["download", "file1", "file2"])
         assert result.exit_code == 0
         # Should be file1.plain and file2.gif
-        assert open("file1.plain").read() == "this is text"
+        assert open("file1.txt").read() == "this is text"
         assert open("file2.gif").read() == "this is gif"
     _, file1_request, file2_request = httpx_mock.get_requests()
     assert (
