@@ -216,6 +216,26 @@ def test_get_paginated(httpx_mock, opts, expected_output):
             ["--starred", "--trashed", "--shared-with-me"],
             "&q=starred+%3D+true+and+trashed+%3D+true+and+sharedWithMe+%3D+true",
         ),
+        (
+            ["--apps"],
+            "&q=%28mimeType+%3D+%27application%2Fvnd.google-apps.document%27+or+mimeType+%3D+%27application%2Fvnd.google-apps.spreadsheet%27+or+mimeType+%3D+%27application%2Fvnd.google-apps.presentation%27+or+mimeType+%3D+%27application%2Fvnd.google-apps.drawing%27%29",
+        ),
+        (
+            ["--docs"],
+            "&q=%28mimeType+%3D+%27application%2Fvnd.google-apps.document%27%29",
+        ),
+        (
+            ["--sheets"],
+            "&q=%28mimeType+%3D+%27application%2Fvnd.google-apps.spreadsheet%27%29",
+        ),
+        (
+            ["--presentations"],
+            "&q=%28mimeType+%3D+%27application%2Fvnd.google-apps.presentation%27%29",
+        ),
+        (
+            ["--drawings"],
+            "&q=%28mimeType+%3D+%27application%2Fvnd.google-apps.drawing%27%29",
+        ),
     ),
 )
 @pytest.mark.parametrize("use_db", (True, False))
@@ -239,6 +259,7 @@ def test_files_basic(httpx_mock, opts, extra_qs, use_db):
         else:
             args.append("--json")
         result = runner.invoke(cli, args + opts, catch_exceptions=False)
+        assert result.exit_code == 0
         token_request, page1_request, page2_request = httpx_mock.get_requests()
         assert token_request.content == TOKEN_REQUEST_CONTENT
         assert page1_request.url == (

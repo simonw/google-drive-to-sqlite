@@ -130,10 +130,21 @@ The following shortcut options help build queries:
 - `--starred` for files and folders you have starred
 - `--trashed` for files and folders in the trash
 - `--shared-with-me` for files and folders that have been shared with you
+- `--apps` for Google Apps documents, spreadsheets, presentations and drawings (equivalent to setting all  of the next four options)
+- `--docs` for Google Apps documents
+- `--sheets` for Google Apps spreadsheets
+- `--presentations` for Google Apps presentations
+- `--drawings` for Google Apps drawings
 
 You can combine these - for example, this returns all files that you have starred and that were shared with you:
 
-    google-drive-to-sqlite files highlights.db --starred --shared-with-me
+    google-drive-to-sqlite files highlights.db \
+      --starred --shared-with-me
+
+Multiple options are treated as AND, with the exception of the Google Apps options which are treated as OR - so the following would retrieve all spreadsheets and presentations that have also been starred:
+
+    google-drive-to-sqlite files highlights.db \
+      --starred --sheets --presentations
 
 You can use `--stop-after X` to stop after retrieving X files, useful for trying out a new search pattern and seeing results straight away.
 
@@ -183,6 +194,12 @@ Options:
   --starred             Files you have starred
   --trashed             Files in the trash
   --shared-with-me      Files that have been shared with you
+  --apps                Google Apps docs, spreadsheets, presentations and
+                        drawings
+  --docs                Google Apps docs
+  --sheets              Google Apps spreadsheets
+  --presentations       Google Apps presentations
+  --drawings            Google Apps drawings
   --json                Output JSON rather than write to DB
   --nl                  Output newline-delimited JSON rather than write to DB
   --stop-after INTEGER  Stop paginating after X results

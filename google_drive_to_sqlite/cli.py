@@ -295,6 +295,15 @@ def get(url, auth, paginate, nl, stop_after, verbose):
     "--shared-with-me", is_flag=True, help="Files that have been shared with you"
 )
 @click.option(
+    "--apps",
+    is_flag=True,
+    help="Google Apps docs, spreadsheets, presentations and drawings",
+)
+@click.option("--docs", is_flag=True, help="Google Apps docs")
+@click.option("--sheets", is_flag=True, help="Google Apps spreadsheets")
+@click.option("--presentations", is_flag=True, help="Google Apps presentations")
+@click.option("--drawings", is_flag=True, help="Google Apps drawings")
+@click.option(
     "json_", "--json", is_flag=True, help="Output JSON rather than write to DB"
 )
 @click.option(
@@ -326,6 +335,11 @@ def files(
     starred,
     trashed,
     shared_with_me,
+    apps,
+    docs,
+    sheets,
+    presentations,
+    drawings,
     json_,
     nl,
     stop_after,
@@ -365,6 +379,30 @@ def files(
         q_bits.append("trashed = true")
     if shared_with_me:
         q_bits.append("sharedWithMe = true")
+
+    mime_types = []
+    if apps:
+        docs = True
+        sheets = True
+        presentations = True
+        drawings = True
+    if docs:
+        mime_types.append("application/vnd.google-apps.document")
+    if sheets:
+        mime_types.append("application/vnd.google-apps.spreadsheet")
+    if presentations:
+        mime_types.append("application/vnd.google-apps.presentation")
+    if drawings:
+        mime_types.append("application/vnd.google-apps.drawing")
+    if mime_types:
+        q_bits.append(
+            "({})".format(
+                " or ".join(
+                    "mimeType = '{}'".format(mime_type) for mime_type in mime_types
+                )
+            )
+        )
+
     q = " and ".join(q_bits)
 
     if q and verbose:
