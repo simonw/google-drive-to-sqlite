@@ -554,9 +554,9 @@ Users who are signed into Google Drive and have permission to view a file will b
 
 This tool requests access to your Google Drive account in order to retrieve metadata about your files there. It also offers a feature that can download the content of those files.
 
-The credentials used to access your account are stored in the auth.json file on your computer. The metadata and content retrieved from Google Drive is also stored only on your own personal computer.
+The credentials used to access your account are stored in the `auth.json` file on your computer. The metadata and content retrieved from Google Drive is also stored only on your own personal computer.
 
-At no point to the developers of this tool gain access to any of your data.
+At no point do the developers of this tool gain access to any of your data.
 
 ## Development
 
