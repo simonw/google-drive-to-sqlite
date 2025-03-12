@@ -5,6 +5,9 @@
 [![Tests](https://github.com/simonw/google-drive-to-sqlite/workflows/Test/badge.svg)](https://github.com/simonw/google-drive-to-sqlite/actions?query=workflow%3ATest)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/simonw/google-drive-to-sqlite/blob/master/LICENSE)
 
+> [!WARNING]  
+> This tool no longer works due to Google deprecating the authentication mechanism it uses. See [issue #40](https://github.com/simonw/google-drive-to-sqlite/issues/40).
+
 Create a SQLite database containing metadata from [Google Drive](https://www.google.com/drive)
 
 For background on this project, see [Google Drive to SQLite](https://simonwillison.net/2022/Feb/20/google-drive-to-sqlite/) on my blog.
