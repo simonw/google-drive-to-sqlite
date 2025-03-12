@@ -31,7 +31,7 @@ setup(
         [console_scripts]
         google-drive-to-sqlite=google_drive_to_sqlite.cli:cli
     """,
-    install_requires=["click", "httpx", "sqlite-utils"],
+    install_requires=["click", "httpx", "sqlite-utils", "google-api-python-client"],
     extras_require={"test": ["pytest", "pytest-httpx", "pytest-mock", "cogapp"]},
     python_requires=">=3.6",
 )

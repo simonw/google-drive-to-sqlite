@@ -1,6 +1,7 @@
-from os import access
 import click
-import httpx
+from google.oauth2 import service_account
+import google.auth.transport.requests
+from google.auth import _helpers
 import itertools
 import json
 import pathlib
@@ -15,14 +16,6 @@ from .utils import (
     paginate_files,
     save_files_and_folders,
 )
-
-# https://github.com/simonw/google-drive-to-sqlite/issues/2
-GOOGLE_CLIENT_ID = (
-    "148933860554-98i3hter1bsn24sa6fcq1tcrhcrujrnl.apps.googleusercontent.com"
-)
-# It's OK to publish this secret in application source code
-GOOGLE_CLIENT_SECRET = "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"
-DEFAULT_SCOPE = "https://www.googleapis.com/auth/drive.readonly"
 
 FORMAT_SHORTCUTS = {
     "html": "text/html",
@@ -105,94 +98,13 @@ def cli():
 
 
 @cli.command()
-@click.option(
-    "-a",
-    "--auth",
-    type=click.Path(file_okay=True, dir_okay=False, allow_dash=False),
-    default="auth.json",
-    help="Path to save token, defaults to auth.json",
-)
-@click.option("--google-client-id", help="Custom Google client ID")
-@click.option("--google-client-secret", help="Custom Google client secret")
-@click.option("--scope", help="Custom token scope")
-def auth(auth, google_client_id, google_client_secret, scope):
-    "Authenticate user and save credentials"
-    if google_client_id is None:
-        google_client_id = GOOGLE_CLIENT_ID
-    if google_client_secret is None:
-        google_client_secret = GOOGLE_CLIENT_SECRET
-    if scope is None:
-        scope = DEFAULT_SCOPE
-    click.echo("Visit the following URL to authenticate with Google Drive")
-    click.echo("")
-    click.echo(start_auth_url(google_client_id, scope))
-    click.echo("")
-    click.echo("Then return here and paste in the resulting code:")
-    copied_code = click.prompt("Paste code here", hide_input=True)
-    response = httpx.post(
-        "https://www.googleapis.com/oauth2/v4/token",
-        data={
-            "code": copied_code,
-            "client_id": google_client_id,
-            "client_secret": google_client_secret,
-            "redirect_uri": "urn:ietf:wg:oauth:2.0:oob",
-            "grant_type": "authorization_code",
-        },
-    )
-    tokens = response.json()
-    if "error" in tokens:
-        message = "{error}: {error_description}".format(**tokens)
-        raise click.ClickException(message)
-    if "refresh_token" not in tokens:
-        raise click.ClickException("No refresh_token in response")
-    # Read existing file and add refresh_token to it
-    try:
-        auth_data = json.load(open(auth))
-    except (ValueError, FileNotFoundError):
-        auth_data = {}
-    info = {"refresh_token": tokens["refresh_token"]}
-    if google_client_id != GOOGLE_CLIENT_ID:
-        info["google_client_id"] = google_client_id
-    if google_client_secret != GOOGLE_CLIENT_SECRET:
-        info["google_client_secret"] = google_client_secret
-    if scope != DEFAULT_SCOPE:
-        info["scope"] = scope
-    auth_data["google-drive-to-sqlite"] = info
-    with open(auth, "w") as fp:
-        fp.write(json.dumps(auth_data, indent=4))
-    # chmod 600 to avoid other users on the shared machine reading it
-    pathlib.Path(auth).chmod(0o600)
-
-
-@cli.command()
-@click.option(
-    "-a",
-    "--auth",
-    type=click.Path(file_okay=True, dir_okay=False, allow_dash=False),
-    default="auth.json",
-    help="Path to load token, defaults to auth.json",
-)
-def revoke(auth):
-    "Revoke the token stored in auth.json"
-    tokens = load_tokens(auth)
-    response = httpx.get(
-        "https://accounts.google.com/o/oauth2/revoke",
-        params={
-            "token": tokens["refresh_token"],
-        },
-    )
-    if "error" in response.json():
-        raise click.ClickException(response.json()["error"])
-
-
-@cli.command()
 @click.argument("url")
 @click.option(
     "-a",
     "--auth",
     type=click.Path(file_okay=True, dir_okay=False, allow_dash=True),
     default="auth.json",
-    help="Path to auth.json token file",
+    help="Path to auth.json credentials",
 )
 @click.option("--paginate", help="Paginate through all results in this key")
 @click.option(
@@ -287,7 +199,7 @@ def get(url, auth, paginate, nl, stop_after, verbose):
     "--auth",
     type=click.Path(file_okay=True, dir_okay=False, allow_dash=True),
     default="auth.json",
-    help="Path to auth.json token file",
+    help="Path to auth.json credentials",
 )
 @click.option("--folder", help="Files in this folder ID and its sub-folders")
 @click.option("-q", help="Files matching this query")
@@ -477,15 +389,11 @@ def files(
 
 
 def load_tokens(auth):
-    try:
-        token_info = json.load(open(auth))["google-drive-to-sqlite"]
-    except (KeyError, FileNotFoundError):
-        raise click.ClickException("Could not find google-drive-to-sqlite in auth.json")
-    return {
-        "refresh_token": token_info["refresh_token"],
-        "client_id": token_info.get("google_client_id", GOOGLE_CLIENT_ID),
-        "client_secret": token_info.get("google_client_secret", GOOGLE_CLIENT_SECRET),
-    }
+    credentials = service_account.Credentials.from_service_account_file(
+        auth, scopes=["https://www.googleapis.com/auth/drive.readonly"]
+    )
+    credentials.refresh(google.auth.transport.requests.Request())
+    return {"bearer_token": _helpers.from_bytes(credentials.token)}
 
 
 @cli.command()
@@ -495,7 +403,7 @@ def load_tokens(auth):
     "--auth",
     type=click.Path(file_okay=True, dir_okay=False, allow_dash=True),
     default="auth.json",
-    help="Path to auth.json token file",
+    help="Path to auth.json credentials",
 )
 @click.option(
     "-o",
@@ -544,7 +452,7 @@ def download(file_ids, auth, output, silent):
     "--auth",
     type=click.Path(file_okay=True, dir_okay=False, allow_dash=True),
     default="auth.json",
-    help="Path to auth.json token file",
+    help="Path to auth.json credentials",
 )
 @click.option(
     "-o",
